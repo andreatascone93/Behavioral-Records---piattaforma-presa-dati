@@ -7,6 +7,7 @@
  */
 (function (root) {
   'use strict';
+  if (!root.BR || !root.BR.seduta) { if (typeof module !== 'undefined' && module.exports) { require('./modello.js'); require('./seduta.js'); } }
 
   var M = root.BR && root.BR.modello ? root.BR.modello : require('./modello.js');
   var P = root.BR && root.BR.piano ? root.BR.piano : require('./piano.js');
@@ -686,6 +687,59 @@
         if (inIntervento) generaConseguenze(pr.piano.fasi[1], sess, eventi.slice(da), function (x) { eventi.push(x); });
       });
     })();
+
+    // Scaletta della seduta per ogni paziente, proposta da seduta.js. Nelle
+    // ultime 6 sedute la scaletta c'era già: i blocchi risultano svolti come
+    // previsto, ogni evento porta il blocco in cui cade e le prove DTT si
+    // dividono tra probe a freddo (le prime, quante ne prevede il probe) e
+    // insegnamento. Si aggiunge in
+    // fondo, senza numeri casuali, così gli altri dati finti non cambiano.
+    var Sd = root.BR.seduta;
+    if (Sd) soggetti.forEach(function (s) {
+      var proposta = Sd.proponi(s);
+      proposta.blocchi.forEach(function (b) { b.id = id('bl'); });
+      s.schedule.blocchi = proposta.blocchi;
+      s.schedule.continui = proposta.continui;
+      sessioni.filter(function (x) { return x.soggettoId === s.id; }).slice(-6).forEach(function (sess) {
+        Sd.preparaSessione(sess, s, sess.inizio);
+        var orari = Sd.orari(sess.scaletta);
+        sess.blocchiSvolti = sess.scaletta.map(function (b, i) {
+          return { bloccoId: b.id, inizio: sess.inizio + orari[i].inizio * 60000, fine: Math.min(sess.fine, sess.inizio + orari[i].fine * 60000) };
+        });
+        var mie = eventi.filter(function (e) { return e.sessioneId === sess.id; });
+        var bloccoAlle = function (t) {
+          var x = sess.blocchiSvolti.find(function (b) { return t >= b.inizio && t < b.fine; }) || sess.blocchiSvolti[sess.blocchiSvolti.length - 1];
+          return sess.scaletta.find(function (b) { return b.id === x.bloccoId; });
+        };
+        var segna = function (e, b) {
+          e.blocco = b.id;
+          e.contesto = e.tipo !== 'conseguenza' && b.targetIds.indexOf(e.targetId) !== -1 ? Sd.TIPI[b.tipo].contesto : 'nessuno';
+        };
+        var togli = [];
+        mie.forEach(function (e) { if (e.tipo !== 'prova') segna(e, bloccoAlle(e.t)); });
+        // Prove DTT: le prime nel probe, le altre nel primo blocco di insegnamento del target.
+        var perTarget = {};
+        mie.forEach(function (e) { if (e.tipo === 'prova') (perTarget[e.targetId] = perTarget[e.targetId] || []).push(e); });
+        Object.keys(perTarget).forEach(function (tid) {
+          var prove = perTarget[tid].sort(function (a, b) { return a.t - b.t; });
+          var probe = sess.scaletta.find(function (b) { return b.tipo === 'probe' && b.targetIds.indexOf(tid) !== -1; });
+          var ins = sess.scaletta.find(function (b) { return b.tipo === 'insegnamento' && b.targetIds.indexOf(tid) !== -1; });
+          // Gli orari restano quelli generati: le conseguenze segnate dipendono da loro.
+          var nProbe = probe ? probe.prove || 1 : 0;
+          prove.filter(function (e) { return !e.valore.mantenimento; }).slice(0, nProbe).forEach(function (e) { e._probe = true; });
+          prove.forEach(function (e) {
+            var inProbe = e._probe;
+            delete e._probe;
+            if (inProbe) {
+              segna(e, probe);
+              // Nel probe niente rinforzo: via la conseguenza generata per questa prova.
+              mie.forEach(function (c) { if (c.tipo === 'conseguenza' && c.targetId === tid && c.t === e.t + 2000) togli.push(c); });
+            } else segna(e, ins || bloccoAlle(e.t));
+          });
+        });
+        togli.forEach(function (c) { eventi.splice(eventi.indexOf(c), 1); });
+      });
+    });
 
     // Pulizia dei campi usati solo per generare.
     soggetti.forEach(function (s) {

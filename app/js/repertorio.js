@@ -197,6 +197,11 @@
     var el = elementi(target);
     if (!el) return [];
     var crit = criterio || CRITERIO_ELEMENTO;
+    // Criterio sui soli probe: le prove per risposta si leggono nei probe.
+    if (crit.contesto && root.BR.seduta) {
+      punti = root.BR.seduta.serieNelContesto(punti, crit.contesto);
+      crit = Object.assign({}, crit, { contesto: null });
+    }
     return inInsegnamento(el).map(function (v) {
       var dal = v.inizio ? new Date(v.inizio + 'T00:00:00').getTime() : 0;
       var suoi = punti.filter(function (p) {

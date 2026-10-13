@@ -185,7 +185,9 @@
    * percentuale } con percentuale null se nessuna riga è calcolabile.
    */
   function seduta(fase, targets, eventi, sessione) {
-    var ev = M.eventiValidi(eventi);
+    // Nei blocchi di probe il rinforzo differenziale non si dà: quelle
+    // risposte non sono occasioni per le conseguenze del piano.
+    var ev = M.eventiValidi(eventi).filter(function (e) { return e.contesto !== 'probe'; });
     var fine = sessione.fine != null ? sessione.fine : (ev.length ? ev[ev.length - 1].t : sessione.inizio);
     var perId = {};
     (targets || []).forEach(function (t) { perId[t.id] = t; });

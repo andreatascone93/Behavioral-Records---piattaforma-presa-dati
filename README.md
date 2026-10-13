@@ -11,6 +11,7 @@ Piattaforma multipiattaforma per la registrazione dei dati dei programmi ABA, pe
 | 3. Prototipo mobile | Seduta con gli strumenti di misura, salvataggio offline, riepilogo configurabile | [app/mobile.html](app/mobile.html) |
 | Piano di intervento | Ruoli dei target, ipotesi di funzione, procedure di insegnamento, fasi pianificate con antecedenti e conseguenze (schemi di rinforzo, rinforzo differenziale, estinzione, schemi concorrenti), regole decisionali per fase, valutazione delle preferenze, timer DRO sul telefono, sicurezza e consenso | [docs/piano-intervento.md](docs/piano-intervento.md), [ricerca di letteratura](docs/ricerca-letteratura.md) |
 | Obiettivi numerici e protocolli | Elenco di risposte nel target con obiettivo numerico (es. 25 tact), repertorio del paziente per operante e categoria, alternanza di richieste facili sul telefono, libreria VB-MAPP e manuali aggiunti | [docs/obiettivi-numerici.md](docs/obiettivi-numerici.md) |
+| Organizzazione della seduta | Scaletta in blocchi (accoglienza, probe a freddo, baseline, insegnamento, pause, mantenimento, probe ritardato, chiusura) con proposta automatica e controlli sui tempi; il telefono segue il blocco in corso; grafici e criteri sui soli probe | [docs/organizzazione-seduta.md](docs/organizzazione-seduta.md) |
 | 4. Scelta tecnologica e versione vera | App web installabile (PWA) per desktop e telefono, dati sul dispositivo in IndexedDB, sincronizzazione con il cloud su Supabase, funzionamento offline | [docs/decisione-tecnologica.md](docs/decisione-tecnologica.md), [app/](app/), [supabase/](supabase/) |
 
 L'app è la versione **clinica** con **dati di esempio**. Senza cloud collegato funziona in modalità locale: tutto resta nel browser e la sincronizzazione tra desktop e telefono aperti nello stesso browser è simulata. Con il cloud collegato le sedute passano davvero da un dispositivo all'altro. Non inserire dati reali di pazienti prima del passo dedicato al GDPR.
@@ -36,6 +37,7 @@ docs/modello-dati.md          modello dei dati e misure (passo 1)
 docs/piano-intervento.md      target, piano a fasi e conseguenze programmate
 docs/ricerca-letteratura.md   ricerca di letteratura su cui si basa il piano
 docs/obiettivi-numerici.md    obiettivi numerici, repertorio e libreria dei protocolli
+docs/organizzazione-seduta.md scaletta della seduta, probe e insegnamento
 docs/decisione-tecnologica.md scelte tecniche e sincronizzazione (passo 4)
 app/                          l'app, file statici senza passaggi di build
   index.html                  pagina di ingresso

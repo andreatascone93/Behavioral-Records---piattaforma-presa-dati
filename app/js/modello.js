@@ -265,7 +265,10 @@
    *     ogni giorno (Lerman et al., 2011; Cummings & Carr, 2009);
    *   minOperatori, minSetting: tra le sessioni consecutive a criterio ci
    *     devono essere almeno tanti operatori o setting diversi (Stokes & Baer,
-   *     1977).
+   *     1977);
+   *   contesto: 'probe' | 'insegnamento': conta solo le prove registrate nei
+   *     blocchi di quel tipo della scaletta di seduta (vedi seduta.js); le
+   *     sessioni senza quei blocchi non contano.
    */
 
   /*
@@ -277,6 +280,12 @@
    */
   function valoreCriterio(criterio, tipo, punto) {
     if (!punto) return null;
+    // Criterio sui soli probe (o sul solo insegnamento) della scaletta.
+    if (criterio && criterio.contesto) {
+      var x = punto.perContesto && punto.perContesto[criterio.contesto];
+      if (!x) return null;
+      punto = { valore: x.valore, dettagli: x.dettagli };
+    }
     var d = punto.dettagli || {};
     var livello = criterio && criterio.livelloPrompt;
     if (tipo === 'dtt' && criterio && criterio.primaProva) {
@@ -363,6 +372,8 @@
       var unita = livello ? (tipo === 'dtt' ? '% risposte corrette ' : '% passi ') + conPrompt : t.unita;
       testo = verso + ' ' + formatta(criterio.soglia, tipo) + ' ' + unita + ' per ' + criterio.sessioni + ' sessioni consecutive';
     }
+    if (criterio.contesto === 'probe') testo += ', valutato sui soli probe';
+    else if (criterio.contesto === 'insegnamento') testo += ', valutato sulle sole prove di insegnamento';
     if (+criterio.minOperatori > 1) testo += ', con almeno ' + criterio.minOperatori + ' operatori diversi';
     if (+criterio.minSetting > 1) testo += ', in almeno ' + criterio.minSetting + ' setting diversi';
     return testo;

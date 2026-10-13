@@ -5,7 +5,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze, F = BR.fedelta, R = BR.repertorio, DR = BR.desktopRepertorio;
+  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze, F = BR.fedelta, R = BR.repertorio, DR = BR.desktopRepertorio, DS = BR.desktopSeduta, Sd = BR.seduta;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -13,7 +13,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
     soggettoId: U.preferenza('desktop-paziente'),
     scheda: U.preferenza('desktop-scheda') || 'grafici',
     sessioneAperta: null,
-    tabelle: {}
+    tabelle: {},
+    contesti: {}
   };
   if (!A.soggetto(stato, vista.soggettoId)) vista.soggettoId = stato.config.soggetti[0].id;
 
@@ -132,10 +133,15 @@ BR.archivio.avvia().then(function (statoIniziale) {
       var fase = A.faseCorrente(pr);
       var prossima = P.prossimaFase(pr);
       var carte = pr.target.map(function (t) {
-        var punti = A.serie(stato, s, pr, t, { soloSincronizzate: true });
-        var c = A.statoCriterio(pr, t, punti);
+        var tutti = A.serie(stato, s, pr, t, { soloSincronizzate: true });
+        var c = A.statoCriterio(pr, t, tutti);
         var criterio = A.criterioCorrente(pr, t);
         var tipo = M.TIPI[t.metodo.tipo];
+        // Con la scaletta, il grafico può mostrare i soli probe o il solo insegnamento.
+        var conContesti = Sd.discreto(t) && tutti.some(function (p) { return p.perContesto && (p.perContesto.probe || p.perContesto.insegnamento); });
+        var contesto = !conContesti ? '' : vista.contesti[t.id] != null ? vista.contesti[t.id] : (criterio && criterio.contesto) || '';
+        var punti = contesto ? Sd.serieNelContesto(tutti, contesto) : tutti;
+        var criterioSulGrafico = altroValore(criterio) || (criterio && (criterio.contesto || '') !== contesto) ? null : criterio;
         var ultimo = punti.length ? punti[punti.length - 1] : null;
         var chiaveTab = t.id;
         var tabella = vista.tabelle[chiaveTab];
@@ -160,14 +166,15 @@ BR.archivio.avvia().then(function (statoIniziale) {
             ? '<div class="proposta"><span>Il criterio è raggiunto. Vuoi passare alla fase di mantenimento?</span>' +
               '<button class="btn btn-primario" type="button" data-azione="cambia-fase" data-programma="' + pr.id + '" data-fase="t:mantenimento">Passa a mantenimento</button></div>'
             : '') +
-          (R.elementi(t) ? DR.cartaElementi(s, pr, t, punti, criterio) : '') +
+          (R.elementi(t) ? DR.cartaElementi(s, pr, t, tutti, criterio) : '') +
+          (conContesti ? sceltaContesto(t.id, contesto, criterio) : '') +
           // Se il criterio usa un altro valore (livello di prompt, prima prova),
           // la sua linea non va sul grafico delle risposte indipendenti.
-          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: altroValore(criterio) ? null : criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
+          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: criterioSulGrafico, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
           (punti.escluse ? '<p class="tenue piccolo">' + punti.escluse + (punti.escluse === 1 ? ' sessione registrata' : ' sessioni registrate') + ' con un tipo di misura precedente non ' + (punti.escluse === 1 ? 'è' : 'sono') + ' nel grafico.</p>' : '') +
           extra +
           '<button class="btn btn-piatto piccolo" type="button" data-azione="tabella" data-id="' + chiaveTab + '">' + (tabella ? 'Nascondi i valori' : 'Mostra i valori in tabella') + '</button>' +
-          (tabella ? tabellaValori(punti, t, altroValore(criterio) ? criterio : null) : '') +
+          (tabella ? tabellaValori(punti, t, criterio && !criterioSulGrafico ? criterio : null) : '') +
         '</article>';
       }).join('');
       var regole = A.regoleFase(stato, s, pr, { soloSincronizzate: true });
@@ -211,6 +218,17 @@ BR.archivio.avvia().then(function (statoIniziale) {
       '<div class="fedelta-mini" title="Fedeltà nelle ultime ' + ultime.length + ' sedute; la linea è il ' + F.SOGLIA + '%">' +
         G.mini(ultime.map(function (x) { return x.percentuale; }), { max: 100, soglia: F.SOGLIA, larghezza: 160, altezza: 44 }) + '</div>' +
     '</div>';
+  }
+
+  // Tutte le prove, solo probe, solo insegnamento: quale serie disegnare.
+  function sceltaContesto(id, contesto, criterio) {
+    var voci = [['', 'Tutte le prove'], ['probe', 'Solo probe'], ['insegnamento', 'Solo insegnamento']];
+    return '<div class="segmenti" role="group" aria-label="Dati da mostrare">' + voci.map(function (v) {
+      var sel = v[0] === contesto;
+      var delCriterio = criterio && (criterio.contesto || '') === v[0] && criterio.contesto;
+      return '<button type="button" class="segmento' + (sel ? ' sel' : '') + '" aria-pressed="' + sel + '" data-azione="contesto-grafico" data-id="' + id + '" data-contesto="' + v[0] + '"' +
+        (delCriterio ? ' title="Il criterio si valuta su questi dati"' : '') + '>' + v[1] + (delCriterio ? ' ★' : '') + '</button>';
+    }).join('') + '</div>';
   }
 
   function altroValore(criterio) {
@@ -314,7 +332,9 @@ BR.archivio.avvia().then(function (statoIniziale) {
     var tutti = A.targetDi(s);
     var dentro = sc.voci.map(function (v) { return A.trovaTarget(s, v.targetId); }).filter(Boolean);
     var fuori = tutti.filter(function (x) { return !sc.voci.some(function (v) { return v.targetId === x.target.id; }); });
+    var mini = DS.anteprima(s);
     return '<div class="schedule">' +
+      '<div class="schedule-colonna">' +
       '<section class="carta">' +
         '<h2>Impostazioni della seduta</h2>' +
         '<div class="campi-riga">' +
@@ -337,13 +357,15 @@ BR.archivio.avvia().then(function (statoIniziale) {
           return '<option value="' + x.target.id + '">' + esc(x.target.nome) + ' (' + esc(x.programma.nome) + ')</option>';
         }).join('') + '</select><button class="btn" type="button" data-azione="aggiungi-voce">Aggiungi alla seduta</button></div>' : '') +
       '</section>' +
+      DS.vista(s) +
+      '</div>' +
       '<aside class="anteprima" aria-label="Anteprima sul telefono">' +
         '<span class="etichetta">Così la vede il telefono</span>' +
         '<div class="telefono-mini">' +
           '<div class="tm-testa"><span class="dato">' + esc(s.codice) + '</span><span class="dato">00:00</span></div>' +
-          dentro.map(function (x) {
+          (mini || dentro.map(function (x) {
             return '<div class="tm-voce"><span>' + esc(x.target.nome) + '</span><span class="tm-strumento">' + esc(M.TIPI[x.target.metodo.tipo].strumentoNome) + '</span></div>';
-          }).join('') +
+          }).join('')) +
         '</div>' +
         '<a class="btn" href="mobile.html">Provala sul telefono</a>' +
       '</aside>' +
@@ -372,7 +394,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function registroEventi(s, sess, ev) {
-    return fedeltaSessione(s, sess, ev) + elencoEventi(s, sess, ev);
+    return DS.svolti(s, sess, ev) + fedeltaSessione(s, sess, ev) + elencoEventi(s, sess, ev);
   }
 
   function fedeltaSessione(s, sess, ev) {
@@ -396,7 +418,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
       return '<div class="ev' + (annullati[e.id] ? ' annullato' : '') + (e.tipo === 'annulla' ? ' correzione' : '') + '">' +
         '<span class="dato tenue">' + U.mmss(e.t - sess.inizio) + '</span>' +
         '<span>' + esc(x ? x.target.nome : '?') + '</span>' +
-        '<span class="dato">' + esc(e.tipo === 'conseguenza' ? P.descriviEventoConseguenza(e, contingenza(s, e.valore && e.valore.contingenzaId)) : descriviEvento(e)) + '</span>' +
+        '<span class="dato">' + esc(e.tipo === 'conseguenza' ? P.descriviEventoConseguenza(e, contingenza(s, e.valore && e.valore.contingenzaId)) : descriviEvento(e)) +
+          (Sd.CONTESTI[e.contesto] && e.tipo !== 'annulla' ? ' <span class="tenue">· ' + esc(Sd.CONTESTI[e.contesto].toLowerCase()) + '</span>' : '') + '</span>' +
         (e.sincronizzato ? '' : '<span class="pillola attenzione">da inviare</span>') + '</div>';
     }).join('') + '</div>';
   }
@@ -442,6 +465,11 @@ BR.archivio.avvia().then(function (statoIniziale) {
     ['FP', 'Fino al fisico parziale']
   ];
 
+  // Su quali prove si valuta il criterio, se la seduta ha una scaletta.
+  var CONTESTI_CRITERIO = [
+    ['', 'Tutte le prove'], ['probe', 'Solo i probe della scaletta'], ['insegnamento', 'Solo le prove di insegnamento']
+  ];
+
   // Criterio dal modulo del target, con le richieste in più solo dove servono.
   function leggiCriterio(form) {
     var q = function (sel) { return form.querySelector(sel); };
@@ -451,6 +479,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     if ((tipo === 'dtt' || tipo === 'task_analysis') && livello !== 'I') c.livelloPrompt = livello;
     // Sulla prima prova il valore è 100 (corretta) o 0: il criterio è "corretta".
     if (tipo === 'dtt' && q('#t-prima').checked) { c.primaProva = true; c.soglia = 100; c.verso = 'almeno'; }
+    if (Sd.DISCRETE.indexOf(tipo) !== -1 && q('#t-contesto').value) c.contesto = q('#t-contesto').value;
     var op = Math.round(+q('#t-min-op').value || 1), set = Math.round(+q('#t-min-set').value || 1);
     if (op > 1) c.minOperatori = op;
     if (set > 1) c.minSetting = set;
@@ -555,11 +584,15 @@ BR.archivio.avvia().then(function (statoIniziale) {
                 LIVELLI_CRITERIO.map(function (l) {
                   return '<option value="' + l[0] + '"' + (((c && c.livelloPrompt) || 'I') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
                 }).join('') + '</select></div>' +
+              '<div class="campo" data-tipi="dtt task_analysis latenza"><label for="t-contesto">Prove che contano</label><select id="t-contesto">' +
+                CONTESTI_CRITERIO.map(function (l) {
+                  return '<option value="' + l[0] + '"' + (((c && c.contesto) || '') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
+                }).join('') + '</select></div>' +
               '<div class="campo"><label for="t-min-op">Operatori diversi, almeno</label><input id="t-min-op" type="number" min="1" max="6" value="' + ((c && c.minOperatori) || 1) + '"></div>' +
               '<div class="campo"><label for="t-min-set">Setting diversi, almeno</label><input id="t-min-set" type="number" min="1" max="6" value="' + ((c && c.minSetting) || 1) + '"></div>' +
             '</div>' +
             '<label class="spunta" data-tipi="dtt"><input id="t-prima" type="checkbox"' + (c && c.primaProva ? ' checked' : '') + '> Conta solo la prima prova del giorno (sondaggio a freddo)</label>' +
-            '<p class="aiuto piccolo">Operatori e setting si contano tra le sessioni consecutive a criterio: con 2 operatori il criterio è raggiunto solo se almeno una di quelle sessioni l’ha condotta un altro operatore. La prima prova del giorno è più severa della percentuale su tutte le prove: tende a segnalare la padronanza più tardi (Lerman et al., 2011).</p>' +
+            '<p class="aiuto piccolo">Operatori e setting si contano tra le sessioni consecutive a criterio: con 2 operatori il criterio è raggiunto solo se almeno una di quelle sessioni l’ha condotta un altro operatore. La prima prova del giorno è più severa della percentuale su tutte le prove: tende a segnalare la padronanza più tardi (Lerman et al., 2011). Con “Solo i probe della scaletta” contano le sole sedute con un blocco di probe.</p>' +
           '</div>' +
         '</fieldset>' +
         '<fieldset data-per="abilita sostitutivo problema"><legend>Generalizzazione</legend>' +
@@ -710,6 +743,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       if (nuovo) {
         pr.target.push(bozza);
         corrente().schedule.voci.push({ targetId: bozza.id });
+        DS.targetAggiunto(corrente(), bozza.id);
         U.toast('Target aggiunto anche alla seduta');
       } else {
         var i = pr.target.findIndex(function (x) { return x.id === bozza.id; });
@@ -832,6 +866,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     var s = corrente();
     var az = b.getAttribute('data-azione');
     var pr = b.getAttribute('data-programma') ? s.programmi.find(function (p) { return p.id === b.getAttribute('data-programma'); }) : null;
+    if (DS.clic(ctxPiano, s, az, b)) return;
     switch (az) {
       case 'scegli-paziente':
         vista.soggettoId = b.getAttribute('data-id');
@@ -904,13 +939,18 @@ BR.archivio.avvia().then(function (statoIniziale) {
       }
       case 'togli-voce':
         s.schedule.voci = s.schedule.voci.filter(function (v) { return v.targetId !== b.getAttribute('data-id'); });
+        DS.targetTolto(s, b.getAttribute('data-id'));
         salva();
         break;
       case 'aggiungi-voce': {
         var sel = document.getElementById('sc-aggiungi');
-        if (sel && sel.value) { s.schedule.voci.push({ targetId: sel.value }); salva(); }
+        if (sel && sel.value) { s.schedule.voci.push({ targetId: sel.value }); DS.targetAggiunto(s, sel.value); salva(); }
         break;
       }
+      case 'contesto-grafico':
+        vista.contesti[b.getAttribute('data-id')] = b.getAttribute('data-contesto');
+        disegna();
+        break;
       case 'apri-sessione':
         vista.sessioneAperta = vista.sessioneAperta === b.getAttribute('data-id') ? null : b.getAttribute('data-id');
         disegna();
@@ -931,6 +971,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
 
   document.addEventListener('change', function (e) {
     if (DR.cambio(e)) { disegna(); return; }
+    if (DS.cambio(ctxPiano, corrente(), e)) return;
     var campo = e.target.getAttribute && e.target.getAttribute('data-campo-schedule');
     if (!campo) return;
     var sc = corrente().schedule;
