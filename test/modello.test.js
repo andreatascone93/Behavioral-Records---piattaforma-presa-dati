@@ -230,3 +230,13 @@ test('piano: funzioni multiple e sintetizzate', () => {
       { procedura: 'estinzione', targetId: 'p', parametri: { variante: 'tangibile' } }] }] } };
   assert.doesNotMatch(piano.controlla(pr).map((a) => a.testo).join('\n'), /funzione ipotizzata/);
 });
+
+test('piano: token con i tre schemi', () => {
+  const prezzi = piano.leggiPrezzi('Tablet 2 min = 5\nriga sbagliata\nAdesivo=3');
+  assert.deepEqual(prezzi, [{ descrizione: 'Tablet 2 min', costo: 5 }, { descrizione: 'Adesivo', costo: 3 }]);
+  assert.equal(piano.scriviPrezzi(prezzi), 'Tablet 2 min = 5\nAdesivo = 3');
+  const c = { procedura: 'token', schema: { tipo: 'FR', valore: 2 }, parametri: { tokenPerScambio: 5, prezzi } };
+  assert.equal(piano.descriviContingenza(c), 'Un token con FR 2; scambio dopo 5 token; menu: Tablet 2 min 5, Adesivo 3');
+  const pr = { target: [{ id: 'a', nome: 'Attenzione', ruolo: 'abilita' }], piano: { fasi: [{ id: 'f', nome: 'Token', contingenze: [{ ...c, targetId: 'a', parametri: { tokenPerScambio: 5 } }] }] } };
+  assert.match(piano.controlla(pr).map((a) => a.testo).join('\n'), /prezzo di ogni rinforzatore/);
+});

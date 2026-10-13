@@ -223,6 +223,11 @@
         case 'azzera':
           html += '<label class="spunta piccolo"><input type="checkbox" data-r="' + r + '" data-k="parametri.azzera"' + (p.azzera ? ' checked' : '') + '> Il comportamento fa ripartire l’intervallo</label>'; break;
         case 'perdita': html += inputTesto(r, 'parametri.perdita', p.perdita, ETICHETTE.perdita, 'Es. 1 token'); break;
+        case 'prezzi':
+          html += '<div class="campo"><label>Menu dei rinforzatori di scambio, uno per riga: nome = token</label>' +
+            '<textarea data-r="' + r + '" data-k="parametri.prezzi" data-prezzi placeholder="Es. Due minuti di tablet = 5">' + esc(P.scriviPrezzi(p.prezzi)) + '</textarea>' +
+            '<span class="aiuto">Lo schema sopra dice quando si guadagna un token; “token per lo scambio” quando si può scambiare; il menu quanto costa ogni rinforzatore.</span></div>';
+          break;
         case 'intervalloSec':
           if (c.procedura === 'drl' && p.variante === 'sessione') break;
           html += inputNum(r, 'parametri.intervalloSec', p.intervalloSec, c.procedura === 'drl' && p.variante === 'distanziate' ? 'IRT minimo (s)' : ETICHETTE.intervalloSec, 1); break;
@@ -276,6 +281,8 @@
       }
       if (/^variante/.test(campo)) out.parametri.variante = variantePredefinita(campo, t);
       if (campo === 'intervalloSec') out.parametri.intervalloSec = 60;
+      if (campo === 'tokenPerScambio') out.parametri.tokenPerScambio = 5;
+      if (campo === 'prezzi') out.parametri.prezzi = [];
       if (campo === 'azzera') out.parametri.azzera = true;
     });
     // Per FCT il rinforzatore di partenza è quello della funzione.
@@ -339,7 +346,9 @@
           var el = e.target;
           if (!el.hasAttribute('data-k') || el.type === 'checkbox' || el.tagName === 'SELECT') return;
           var riga = elenco(el)[+el.getAttribute('data-r')];
-          imposta(riga, el.getAttribute('data-k'), el.hasAttribute('data-num') ? (el.value === '' ? null : +el.value) : el.value);
+          var valore = el.hasAttribute('data-num') ? (el.value === '' ? null : +el.value)
+            : el.hasAttribute('data-prezzi') ? P.leggiPrezzi(el.value) : el.value;
+          imposta(riga, el.getAttribute('data-k'), valore);
         });
         form.addEventListener('change', function (e) {
           var el = e.target;

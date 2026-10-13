@@ -103,7 +103,9 @@
     },
     token: {
       nome: 'Economia simbolica (token)', gruppo: 'rinforzo', ruoli: ['abilita', 'sostitutivo'],
-      campi: ['schema', 'tokenPerScambio', 'rinforzatore']
+      // I tre schemi del token (Hackenberg, 2009; Ivy et al., 2017):
+      // produzione (schema), scambio (tokenPerScambio), prezzi del menu.
+      campi: ['schema', 'tokenPerScambio', 'prezzi']
     },
     drh: {
       nome: 'Rinforzo differenziale di tassi alti (DRH)', gruppo: 'differenziale', ruoli: ['abilita', 'sostitutivo'],
@@ -257,7 +259,11 @@
     switch (c.procedura) {
       case 'rinforzo_positivo': return conR(descriviSchema(c.schema));
       case 'rinforzo_negativo': return descriviSchema(c.schema) + ' · pausa di ' + num(p.pausaSec || 0) + ' s';
-      case 'token': return 'Un token con ' + descriviSchema(c.schema) + ', scambio ogni ' + (p.tokenPerScambio || '?') + ' token' + (r ? ' · ' + r : '');
+      case 'token': {
+        var menu = (p.prezzi || []).map(function (x) { return x.descrizione + ' ' + x.costo; }).join(', ');
+        return 'Un token con ' + descriviSchema(c.schema) + '; scambio dopo ' + (p.tokenPerScambio || '?') + ' token' +
+          (menu ? '; menu: ' + menu : r ? ' · ' + r : '');
+      }
       case 'drh': return conR('Almeno ' + (p.minimo || '?') + ' risposte in ' + num(p.intervalloSec || 0) + ' s');
       case 'fct': case 'dra': case 'dri': {
         var prob = p.problema === 'rinforzo'
@@ -275,6 +281,17 @@
       case 'timeout': return (VARIANTI.varianteTimeout[p.variante] || 'Time-out') + ', ' + num(p.durataSec || 0) + ' s';
       default: return '';
     }
+  }
+
+  // Menu dei rinforzatori di scambio, una riga per voce: "nome = token".
+  function leggiPrezzi(testo) {
+    return String(testo || '').split('\n').map(function (riga) {
+      var m = riga.match(/^\s*(.+?)\s*=\s*(\d+)\s*$/);
+      return m ? { descrizione: m[1], costo: +m[2] } : null;
+    }).filter(Boolean);
+  }
+  function scriviPrezzi(prezzi) {
+    return (prezzi || []).map(function (x) { return x.descrizione + ' = ' + x.costo; }).join('\n');
   }
 
   function siglaContingenza(c) {
@@ -384,6 +401,9 @@
       var nome = t ? '“' + t.nome + '”' : 'Un target';
       if (PROCEDURE[c.procedura] && PROCEDURE[c.procedura].restrittiva && !(c.motivazione && c.motivazione.trim())) {
         out.push({ livello: 'attenzione', testo: x.fase.nome + ': ' + PROCEDURE[c.procedura].nome.toLowerCase() + ' su ' + nome + ' è una procedura restrittiva. Serve la motivazione scritta e il riferimento alle alternative meno restrittive già provate.' });
+      }
+      if (c.procedura === 'token' && (!p.tokenPerScambio || !(p.prezzi || []).length)) {
+        out.push({ livello: 'attenzione', testo: x.fase.nome + ': il sistema a token su ' + nome + ' deve specificare quanti token servono per lo scambio e il prezzo di ogni rinforzatore.' });
       }
       if (/^(fct|dra|dri)$/.test(c.procedura) && !perId[p.alternativoId]) {
         out.push({ livello: 'attenzione', testo: x.fase.nome + ': scegli il comportamento alternativo da rinforzare per ' + nome + '.' });
@@ -537,7 +557,7 @@
     MODELLI: MODELLI, creaFasi: creaFasi,
     descriviSchema: descriviSchema, descriviRinforzatore: descriviRinforzatore,
     descriviContingenza: descriviContingenza, siglaContingenza: siglaContingenza,
-    descriviAntecedente: descriviAntecedente, schemiConcorrenti: schemiConcorrenti,
+    descriviAntecedente: descriviAntecedente, leggiPrezzi: leggiPrezzi, scriviPrezzi: scriviPrezzi, schemiConcorrenti: schemiConcorrenti,
     obiettivo: obiettivo, fasePianificata: fasePianificata, nomeFase: nomeFase,
     prossimaFase: prossimaFase, faseInCorso: faseInCorso, criterioPerFase: criterioPerFase,
     controlla: controlla

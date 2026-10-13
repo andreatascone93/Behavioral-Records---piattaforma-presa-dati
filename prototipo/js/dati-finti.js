@@ -235,6 +235,11 @@
         generalizzazione: generalizzazione(['Insegnante di sostegno', 'Insegnante di classe'], ['Aula', 'Laboratorio'], ['Schede', 'Quaderno'])
       });
     p2classe.target.push(attenzione, alzarsi);
+    var menuToken = [
+      { descrizione: 'Due minuti di gioco con l’insegnante', costo: 5 },
+      { descrizione: 'Adesivo', costo: 3 },
+      { descrizione: 'Scegliere il gioco dell’intervallo', costo: 8 }
+    ];
     var lode = { descrizione: 'Lode descrittiva e vicinanza dell’adulto', categoria: 'sociale', qualita: 'alta', ritardoSec: 0 };
     p2classe.piano = {
       modello: null,
@@ -244,7 +249,7 @@
           id: id('pf'), tipo: 'intervento', nome: 'DRI con token', descrizione: 'Attenzione al compito rinforzata con token; alzarsi non riceve più richiami.',
           antecedenti: [{ id: id('an'), tipo: 'agenda_visiva', dettaglio: 'Agenda della mattina sul banco, con la pausa indicata.' }],
           contingenze: [
-            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'FI', valore: 60 }, rinforzatore: { descrizione: 'Due minuti di gioco con l’insegnante', categoria: 'attivita', magnitudo: '2 min', qualita: 'alta', ritardoSec: 0 }, parametri: { tokenPerScambio: 5 } },
+            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'FI', valore: 60 }, parametri: { tokenPerScambio: 5, prezzi: menuToken } },
             { id: id('ct'), targetId: alzarsi.id, procedura: 'dri', schema: { tipo: 'FI', valore: 60 }, rinforzatore: lode, parametri: { alternativoId: attenzione.id, problema: 'estinzione' } },
             { id: id('ct'), targetId: alzarsi.id, procedura: 'estinzione', parametri: { variante: 'attenzione' } }
           ],
@@ -253,7 +258,7 @@
         {
           id: id('pf'), tipo: 'assottigliamento', nome: 'Token ogni 3 minuti', descrizione: '', antecedenti: [],
           contingenze: [
-            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'VI', valore: 180 }, rinforzatore: { descrizione: 'Due minuti di gioco con l’insegnante', categoria: 'attivita', magnitudo: '2 min', qualita: 'alta', ritardoSec: 0 }, parametri: { tokenPerScambio: 5 } },
+            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'VI', valore: 180 }, parametri: { tokenPerScambio: 5, prezzi: menuToken } },
             { id: id('ct'), targetId: alzarsi.id, procedura: 'estinzione', parametri: { variante: 'attenzione' } }
           ],
           criteri: {}
