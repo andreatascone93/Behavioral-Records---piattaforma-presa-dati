@@ -739,6 +739,7 @@
       case 'modifica-preferenza':
         DP.modifica(ctxPiano, s, (s.preferenze || []).find(function (v) { return v.id === b.getAttribute('data-id'); }));
         break;
+      case 'modifica-sicurezza': D.modificaSicurezza(ctxPiano, pr); break;
       case 'modello-piano': D.applicaModello(ctxPiano, pr); break;
       case 'nuova-fase-piano': D.modificaFase(ctxPiano, pr, null); break;
       case 'modifica-fase-piano': D.modificaFase(ctxPiano, pr, P.fasePianificata(pr, b.getAttribute('data-id'))); break;

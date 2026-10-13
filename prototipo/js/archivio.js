@@ -7,7 +7,7 @@
   'use strict';
 
   var M = root.BR.modello;
-  var CHIAVE = 'behavioral-records-prototipo-v2';
+  var CHIAVE = 'behavioral-records-prototipo-v3';
   var memoria = null; // copia di riserva se localStorage non è disponibile
 
   function leggi() {
@@ -25,7 +25,7 @@
 
   function carica() {
     var s = leggi();
-    if (!s || s.versione !== 2) {
+    if (!s || s.versione !== 3) {
       s = root.BR.datiFinti.genera();
       salva(s);
     }

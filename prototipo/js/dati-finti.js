@@ -211,6 +211,13 @@
     conPiano(p1aiuto, 'acquisizione', null, aiuto);
     p1aiuto._cambio = 5;
 
+    p1aggr.sicurezza = {
+      consenso: { data: giorniPrima(40), da: 'genitori', restrittive: false, note: 'Piano spiegato a entrambi i genitori; copia firmata in cartella.' },
+      assenso: { segni: 'Si siede al tavolo e prende il materiale', dissenso: 'Si gira, copre il viso con le mani, dice “basta”', cosaFare: 'Pausa con un gioco scelto da lui, poi si riprova con una richiesta più facile' },
+      crisi: { segnali: 'Colpi ripetuti verso le persone che non si fermano con il blocco', passi: 'Allontanare gli altri, togliere gli oggetti che si possono lanciare, restare a un braccio di distanza, parlare poco e con voce calma. Nessuna richiesta finché non è finita.', fine: '2 minuti senza colpi e respiro tranquillo', contatti: 'Supervisore e genitore nella stessa giornata' },
+      revisione: giorniPrima(-50)
+    };
+
     soggetti.push({
       id: id('sg'), codice: 'PZ-014', iniziali: 'L.M.', annoNascita: 2018,
       note: 'Diagnosi ASD livello 2. Sedute in studio, 3 volte a settimana.',
@@ -293,6 +300,12 @@
     conPiano(p2mani, 'acquisizione', null, mani);
     p2mani._cambio = 4;
 
+    p2classe.sicurezza = {
+      consenso: { data: giorniPrima(50), da: 'genitori', restrittive: false, note: 'Consenso anche della scuola per le osservazioni in classe.' },
+      assenso: { segni: '', dissenso: '', cosaFare: '' },
+      crisi: {}
+    };
+
     soggetti.push({
       id: id('sg'), codice: 'PZ-022', iniziali: 'G.F.', annoNascita: 2016,
       note: 'Sedute a scuola con l’insegnante di sostegno presente.',
@@ -359,6 +372,12 @@
     p3nome.target.push(nome);
     conPiano(p3nome, 'acquisizione', null, nome);
     p3nome._cambio = 5;
+
+    p3stereo.sicurezza = {
+      consenso: { data: giorniPrima(30), da: 'tutore', restrittive: false, note: '' },
+      assenso: { segni: 'Sorride, si avvicina all’operatore', dissenso: 'Si allontana verso la porta, piange', cosaFare: 'Si interrompe la prova e si offre la trottola; si riprende quando torna vicino' },
+      crisi: {}
+    };
 
     soggetti.push({
       id: id('sg'), codice: 'PZ-031', iniziali: 'S.B.', annoNascita: 2019,
@@ -553,7 +572,7 @@
     eventi.sort(function (a, b) { return a.t - b.t; });
 
     return {
-      versione: 2,
+      versione: 3,
       generato: oggi.getTime(),
       contesto: 'clinica',
       operatoreCorrente: 'op_andrea',

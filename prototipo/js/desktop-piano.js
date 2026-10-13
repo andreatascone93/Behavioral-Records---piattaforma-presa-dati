@@ -62,10 +62,86 @@
       (avvisi.length ? '<ul class="avvisi">' + avvisi.map(function (a) {
         return '<li class="avviso-' + a.livello + '">' + esc(a.testo) + '</li>';
       }).join('') + '</ul>' : '') +
+      sicurezza(pr) +
       (fasi.length
         ? '<ol class="piano-fasi">' + fasi.map(function (f, i) { return fase(pr, f, i, tm, prossima); }).join('') + '</ol>'
         : '<div class="vuoto"><h3>Nessuna fase pianificata.</h3><p class="tenue">Parti da un modello (FCT, DRA con schemi concorrenti, DRO, insegnamento di un’abilità) o aggiungi le fasi una alla volta.</p></div>') +
     '</section>';
+  }
+
+  // Piano di crisi, consenso e assenso del programma.
+  function sicurezza(pr) {
+    var x = P.sicurezzaDi(pr);
+    var righe = [];
+    if (x.consenso.data) {
+      righe.push('<li><span class="etichetta">Consenso</span><span>Firmato il ' + esc(U.data(new Date(x.consenso.data + 'T12:00:00').getTime())) +
+        (x.consenso.da ? ' da ' + esc((P.CONSENSO_DA[x.consenso.da] || x.consenso.da).toLowerCase()) : '') +
+        (x.consenso.restrittive ? ', comprese le procedure restrittive' : '') + (x.consenso.note ? '. ' + esc(x.consenso.note) : '') + '</span></li>');
+    }
+    if (x.assenso.segni || x.assenso.dissenso) {
+      righe.push('<li><span class="etichetta">Assenso</span><span>' + (x.assenso.segni ? 'Assenso: ' + esc(x.assenso.segni) + '. ' : '') +
+        (x.assenso.dissenso ? 'Dissenso: ' + esc(x.assenso.dissenso) + '. ' : '') + (x.assenso.cosaFare ? 'Allora: ' + esc(x.assenso.cosaFare) : '') + '</span></li>');
+    }
+    if (x.crisi.passi) {
+      righe.push('<li><span class="etichetta">Crisi</span><span>' + (x.crisi.segnali ? 'Quando: ' + esc(x.crisi.segnali) + '. ' : '') +
+        'Cosa fare: ' + esc(x.crisi.passi.replace(/\.\s*$/, '')) + (x.crisi.fine ? '. Finisce quando: ' + esc(x.crisi.fine) : '') +
+        (x.crisi.contatti ? '. Avvisare: ' + esc(x.crisi.contatti) : '') + '</span></li>');
+    }
+    return '<div class="sicurezza">' +
+      '<div class="sicurezza-testa"><h3>Sicurezza e consenso</h3>' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="modifica-sicurezza" data-programma="' + pr.id + '">Modifica</button></div>' +
+      (righe.length ? '<ul class="sintesi-target">' + righe.join('') + '</ul>' : '<p class="tenue piccolo">Nessun dato: aggiungi consenso, assenso e, per i comportamenti da ridurre, il piano di crisi.</p>') +
+      (x.revisione ? '<p class="tenue piccolo">Revisione prevista: ' + esc(U.data(new Date(x.revisione + 'T12:00:00').getTime())) + '</p>' : '') +
+    '</div>';
+  }
+
+  function modificaSicurezza(ctx, pr) {
+    var x = P.sicurezzaDi(pr);
+    function area(id, etichetta, v, segnaposto) {
+      return '<div class="campo"><label for="' + id + '">' + esc(etichetta) + '</label><textarea id="' + id + '" placeholder="' + esc(segnaposto || '') + '">' + esc(v || '') + '</textarea></div>';
+    }
+    function testo(id, etichetta, v, segnaposto) {
+      return '<div class="campo largo"><label for="' + id + '">' + esc(etichetta) + '</label><input id="' + id + '" type="text" value="' + esc(v || '') + '" placeholder="' + esc(segnaposto || '') + '"></div>';
+    }
+    var restr = P.usaRestrittive(pr);
+    var html = '<div class="modulo">' +
+      '<fieldset><legend>Consenso informato</legend><div class="campi-riga">' +
+        '<div class="campo"><label for="sc-data">Data della firma</label><input id="sc-data" type="date" value="' + esc(x.consenso.data) + '"></div>' +
+        '<div class="campo"><label for="sc-da">Firmato da</label><select id="sc-da">' + opzioni(P.CONSENSO_DA, x.consenso.da, '—') + '</select></div>' +
+        '<div class="campo"><label for="sc-revisione">Revisione prevista</label><input id="sc-revisione" type="date" value="' + esc(x.revisione) + '"></div>' +
+      '</div>' +
+      '<label class="spunta"><input id="sc-restrittive" type="checkbox"' + (x.consenso.restrittive ? ' checked' : '') + '> Il consenso comprende le procedure restrittive del piano' + (restr ? ' <strong>(il piano ne usa)</strong>' : '') + '</label>' +
+      testo('sc-note', 'Note sul consenso', x.consenso.note, 'Es. spiegato con il genitore il 12/10, copia in cartella') +
+      '</fieldset>' +
+      '<fieldset><legend>Assenso del paziente</legend>' +
+        testo('sa-segni', 'Come mostra assenso', x.assenso.segni, 'Es. si avvicina al tavolo, prende il materiale') +
+        testo('sa-dissenso', 'Come mostra dissenso', x.assenso.dissenso, 'Es. si allontana, spinge via il materiale, piange') +
+        testo('sa-cosa', 'Cosa fa l’operatore quando ritira l’assenso', x.assenso.cosaFare, 'Es. pausa e scelta di un’attività, si riprova dopo 2 minuti') +
+      '</fieldset>' +
+      '<fieldset><legend>Piano di crisi</legend>' +
+        '<p class="aiuto piccolo">Per i comportamenti pericolosi o che non si possono lasciare in estinzione. Il telefono lo mostra sotto i target da ridurre.</p>' +
+        testo('cr-segnali', 'Quando si attiva', x.crisi.segnali, 'Es. colpi ripetuti alla testa o rischio per altri') +
+        area('cr-passi', 'Cosa fare, nell’ordine', x.crisi.passi, 'Es. allontanare gli altri bambini, togliere oggetti pericolosi, restare a distanza…') +
+        testo('cr-fine', 'Quando la crisi è finita', x.crisi.fine, 'Es. 2 minuti senza colpi, respiro calmo') +
+        testo('cr-contatti', 'Chi avvisare', x.crisi.contatti, 'Es. supervisore e genitore, nella stessa giornata') +
+      '</fieldset>' +
+    '</div>';
+    U.finestra('Sicurezza e consenso · ' + pr.nome, html, [
+      { testo: 'Annulla', valore: null },
+      { testo: 'Salva', classe: 'btn-primario', valore: true, invio: true }
+    ], { larga: true }).then(function (r) {
+      if (!r) return;
+      var f = r.form;
+      function v(id) { return f.querySelector('#' + id).value.trim(); }
+      pr.sicurezza = {
+        consenso: { data: v('sc-data'), da: v('sc-da'), restrittive: f.querySelector('#sc-restrittive').checked, note: v('sc-note') },
+        assenso: { segni: v('sa-segni'), dissenso: v('sa-dissenso'), cosaFare: v('sa-cosa') },
+        crisi: { segnali: v('cr-segnali'), passi: v('cr-passi'), fine: v('cr-fine'), contatti: v('cr-contatti') },
+        revisione: v('sc-revisione')
+      };
+      ctx.salva();
+      U.toast('Sicurezza e consenso salvati');
+    });
   }
 
   // Una riga per target: ruolo, funzione e sostituzione, oppure come si insegna.
@@ -540,6 +616,6 @@
   }
 
   root.BR.desktopPiano = {
-    vista: vista, modificaFase: modificaFase, applicaModello: applicaModello, statoFase: statoFase
+    vista: vista, modificaFase: modificaFase, modificaSicurezza: modificaSicurezza, applicaModello: applicaModello, statoFase: statoFase
   };
 })(window);

@@ -9,7 +9,7 @@ Piattaforma multipiattaforma per la registrazione dei dati dei programmi ABA, pe
 | 1. Modello dei dati e misure ABA | Entità, dieci misure standard, regole offline, differenze clinica/sperimentale | [docs/modello-dati.md](docs/modello-dati.md) |
 | 2. Prototipo desktop | Pazienti, programmi, target, metodi di misura, schedule di seduta, grafici ABA | [prototipo/desktop.html](prototipo/desktop.html) |
 | 3. Prototipo mobile | Seduta con gli strumenti di misura, salvataggio offline, riepilogo configurabile | [prototipo/mobile.html](prototipo/mobile.html) |
-| Piano di intervento | Ruoli dei target, ipotesi di funzione, procedure di insegnamento, fasi pianificate con antecedenti e conseguenze (schemi di rinforzo, rinforzo differenziale, estinzione, schemi concorrenti) | [docs/piano-intervento.md](docs/piano-intervento.md), [ricerca di letteratura](docs/ricerca-letteratura.md) |
+| Piano di intervento | Ruoli dei target, ipotesi di funzione, procedure di insegnamento, fasi pianificate con antecedenti e conseguenze (schemi di rinforzo, rinforzo differenziale, estinzione, schemi concorrenti), regole decisionali per fase, valutazione delle preferenze, timer DRO sul telefono, sicurezza e consenso | [docs/piano-intervento.md](docs/piano-intervento.md), [ricerca di letteratura](docs/ricerca-letteratura.md) |
 | 4. Revisione e scelta tecnologica | Da fare insieme dopo aver provato i prototipi | – |
 
 I prototipi sono la versione **clinica** con **dati inventati**. La sincronizzazione con il server è simulata: tutto resta nel browser.
@@ -38,6 +38,7 @@ prototipo/
   js/modello.js            tipi di misura, calcolo dei valori dagli eventi, criteri
   js/piano.js              ruoli, funzioni, procedure, schemi di rinforzo, controlli del piano
   js/desktop-piano.js      scheda Piano di intervento del desktop
+  js/desktop-preferenze.js scheda Preferenze del desktop
   js/dati-finti.js         generatore deterministico dei dati di esempio
   js/archivio.js           archivio locale, consultazioni, sincronizzazione simulata
   js/grafico.js            grafici ABA in SVG

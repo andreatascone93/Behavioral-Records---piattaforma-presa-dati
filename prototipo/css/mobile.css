@@ -272,3 +272,6 @@ body { font-size: 16px; }
 .dro-scelte .btn { min-height: 52px; }
 .dro-scelte .btn:only-child { grid-column: 1 / -1; }
 .promemoria-annulla { justify-items: start; }
+.crisi { border: 1px solid var(--critico); border-radius: var(--r-piccolo); padding: 0.45rem 0.6rem; font-size: 0.86rem; }
+.crisi summary { cursor: pointer; font-weight: 700; color: var(--critico); min-height: 32px; display: flex; align-items: center; }
+.crisi p { margin: 0.3rem 0 0; }
