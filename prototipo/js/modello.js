@@ -135,7 +135,8 @@
    * Restituisce { valore, dettagli } con valore = null se non ci sono dati.
    */
   function calcola(metodo, eventiGrezzi, sessione) {
-    var ev = eventiValidi(eventiGrezzi);
+    // Le conseguenze registrate secondo il piano non sono dati del comportamento.
+    var ev = eventiValidi(eventiGrezzi).filter(function (e) { return e.tipo !== 'conseguenza'; });
     var p = metodo.parametri || {};
     var fine = sessione.fine != null ? sessione.fine : (ev.length ? ev[ev.length - 1].t : sessione.inizio);
     // Il tasso si calcola su almeno un minuto, così una seduta di prova di pochi

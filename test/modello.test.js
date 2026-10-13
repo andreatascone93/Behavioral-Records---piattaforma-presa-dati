@@ -279,3 +279,52 @@ test('piano: suggerimenti dalla valutazione più recente e scadenza', () => {
   assert.equal(piano.suggerimentiRinforzatori(pz22, '2026-10-13T12:00:00').scaduta, true);
   assert.equal(piano.suggerimentiRinforzatori({}, '2026-10-13').valutazione, null);
 });
+
+test('piano: timer DRO a intervallo intero, con e senza azzeramento', () => {
+  const c = { id: 'c1', procedura: 'dro', parametri: { variante: 'intervallo_fisso', intervalloSec: 60, azzera: true } };
+  const avvio = ev('conseguenza', 0, { contingenzaId: 'c1', azione: 'avvio' });
+  const t = (sec) => S + sec * 1000;
+  // Nessun comportamento: a 60 s il rinforzo è dovuto.
+  assert.equal(piano.statoDro(c, [avvio], t(30)).restanteMs, 30000);
+  assert.equal(piano.statoDro(c, [avvio], t(61)).dovuto, true);
+  // Il comportamento a 40 s azzera: scadenza a 100 s.
+  const occ = ev('occorrenza', 40);
+  const st = piano.statoDro(c, [avvio, occ], t(70));
+  assert.equal(st.dovuto, false);
+  assert.equal(st.scadenza, t(100));
+  // Rinforzo dato a 65 s: nuovo intervallo da lì.
+  const rf = ev('conseguenza', 65, { contingenzaId: 'c1', azione: 'rinforzo' });
+  const st2 = piano.statoDro(c, [avvio, rf], t(70));
+  assert.equal(st2.scadenza, t(125));
+  assert.equal(st2.rinforzi, 1);
+  // Senza azzeramento l'intervallo è perso e il successivo parte alla scadenza.
+  const c2 = { ...c, parametri: { ...c.parametri, azzera: false } };
+  const st3 = piano.statoDro(c2, [avvio, occ], t(70));
+  assert.equal(st3.dovuto, false);
+  assert.equal(st3.scadenza, t(120));
+  // Fermato: non attivo.
+  const ferma = ev('conseguenza', 80, { contingenzaId: 'c1', azione: 'ferma' });
+  assert.equal(piano.statoDro(c, [avvio, rf, ferma], t(90)).attivo, false);
+});
+
+test('piano: timer DRO momentaneo chiede a ogni scadenza', () => {
+  const c = { id: 'c2', procedura: 'dro', parametri: { variante: 'momentaneo_fisso', intervalloSec: 30 } };
+  const avvio = ev('conseguenza', 0, { contingenzaId: 'c2', azione: 'avvio' });
+  assert.equal(piano.statoDro(c, [avvio], S + 20000).domanda, null);
+  assert.equal(piano.statoDro(c, [avvio], S + 31000).domanda, 0);
+  const no = ev('conseguenza', 32, { contingenzaId: 'c2', azione: 'momento', indice: 0, presente: false });
+  const st = piano.statoDro(c, [avvio, no], S + 40000);
+  assert.equal(st.domanda, null);
+  assert.equal(st.rinforzi, 1);
+  assert.equal(st.scadenza, S + 60000);
+});
+
+test('le conseguenze registrate non cambiano le misure e non si annullano con “Annulla ultimo”', () => {
+  const a = ev('occorrenza', 10);
+  const cons = ev('conseguenza', 600, { contingenzaId: 'x', azione: 'data' });
+  const r = M.calcola({ tipo: 'frequenza' }, [a, cons], { inizio: S, fine: null });
+  assert.equal(r.dettagli.minuti, 1);
+  const stato = { eventi: [Object.assign({}, a, { sessioneId: 's', targetId: 't' }), Object.assign({}, cons, { sessioneId: 's', targetId: 't' })] };
+  const annulla = archivio.annullaUltimo(stato, { id: 's' }, { id: 't', metodo: {} });
+  assert.equal(annulla.rif, a.id);
+});

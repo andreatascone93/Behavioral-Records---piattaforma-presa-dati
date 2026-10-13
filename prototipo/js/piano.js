@@ -579,6 +579,115 @@
     }
   };
 
+  // ---- Conseguenze in seduta (telefono) ---------------------------------------
+  // Gli eventi di tipo 'conseguenza' registrano cosa l'operatore ha fatto
+  // secondo il piano: valore { contingenzaId, procedura, azione }.
+  // azione: 'data' (conseguenza consegnata), 'avvio' e 'ferma' (timer DRO),
+  // 'rinforzo' (DRO a intervallo intero), 'momento' (DRO momentaneo, con
+  // indice e presente). Non entrano nel calcolo delle misure.
+
+  // Fattori dell'intervallo variabile: media 1, fissi per riproducibilità.
+  var FATTORI_VARIABILE = [0.5, 1.5, 1, 0.75, 1.25, 1];
+
+  // Un evento che segnala il comportamento (per azzerare il DRO).
+  function eventoComportamento(e) {
+    if (e.tipo === 'occorrenza' || e.tipo === 'inizio' || e.tipo === 'abc') return true;
+    return e.tipo === 'intervallo' && e.valore && e.valore.presente;
+  }
+
+  function conseguenzeDi(eventi, contingenzaId) {
+    return eventi.filter(function (e) { return e.tipo === 'conseguenza' && e.valore && e.valore.contingenzaId === contingenzaId; });
+  }
+
+  // Stato del timer DRO di una contingenza, dagli eventi validi del target
+  // nella sessione (ordinati per tempo) e dall'ora corrente.
+  // Intervallo intero: il comportamento azzera il timer (o fa perdere
+  //   l'intervallo, se azzera è falso); a fine intervallo il rinforzo è dovuto
+  //   finché l'operatore non lo segna, poi riparte.
+  // Momentaneo: griglia fissa dall'avvio; a ogni scadenza si chiede se il
+  //   comportamento è presente in quel momento.
+  function statoDro(c, eventi, ora) {
+    var p = c.parametri || {};
+    var base = Math.max(1, +p.intervalloSec || 60) * 1000;
+    var variabile = /variabile$/.test(p.variante || '');
+    var momentaneo = /^momentaneo/.test(p.variante || '');
+    function durata(k) { return variabile ? base * FATTORI_VARIABILE[k % FATTORI_VARIABILE.length] : base; }
+
+    var miei = conseguenzeDi(eventi, c.id);
+    var comandi = miei.filter(function (e) { return e.valore.azione === 'avvio' || e.valore.azione === 'ferma'; });
+    var rinforziTotali = miei.filter(function (e) {
+      return e.valore.azione === 'rinforzo' || (e.valore.azione === 'momento' && !e.valore.presente);
+    }).length;
+    var avvio = comandi[comandi.length - 1];
+    var out = { attivo: false, momentaneo: momentaneo, rinforzi: rinforziTotali, intervalloMs: base };
+    if (!avvio || avvio.valore.azione === 'ferma') return out;
+    out.attivo = true;
+    var dopo = eventi.filter(function (e) { return e.t >= avvio.t && e !== avvio; });
+
+    if (momentaneo) {
+      var risposte = {};
+      dopo.forEach(function (e) {
+        if (e.tipo === 'conseguenza' && e.valore && e.valore.contingenzaId === c.id && e.valore.azione === 'momento') risposte[e.valore.indice] = e.valore.presente;
+      });
+      var k = 0, fine = avvio.t + durata(0);
+      while (fine <= ora) { k++; fine += durata(k); }
+      // k = intervallo in corso; l'ultimo concluso è k - 1.
+      var concluso = k - 1;
+      out.indice = k;
+      out.scadenza = fine;
+      out.restanteMs = fine - ora;
+      out.domanda = concluso >= 0 && !(concluso in risposte) ? concluso : null;
+      out.saltati = 0;
+      for (var i = 0; i < concluso; i++) if (!(i in risposte)) out.saltati++;
+      return out;
+    }
+
+    var inizio = avvio.t, j = 0, perso = false, dovuto = false, dovutoDa = null, mancati = 0;
+    function avanza(t) {
+      while (!dovuto && t >= inizio + durata(j)) {
+        if (perso) { inizio += durata(j); j++; perso = false; }
+        else { dovuto = true; dovutoDa = inizio + durata(j); }
+      }
+    }
+    dopo.forEach(function (e) {
+      avanza(e.t);
+      if (eventoComportamento(e)) {
+        if (dovuto) { mancati++; dovuto = false; inizio = e.t; j++; perso = false; }
+        else if (p.azzera === false) perso = true;
+        else inizio = e.t;
+      } else if (e.tipo === 'conseguenza' && e.valore && e.valore.contingenzaId === c.id && e.valore.azione === 'rinforzo') {
+        dovuto = false; perso = false; inizio = e.t; j++;
+      }
+    });
+    avanza(ora);
+    out.indice = j;
+    out.dovuto = dovuto;
+    out.dovutoDa = dovutoDa;
+    out.perso = perso;
+    out.mancati = mancati;
+    out.inizio = inizio;
+    out.scadenza = inizio + durata(j);
+    out.restanteMs = dovuto ? 0 : inizio + durata(j) - ora;
+    return out;
+  }
+
+  // Quante volte una conseguenza è stata consegnata in seduta.
+  function conteggioConsegne(eventi, contingenzaId) {
+    return conseguenzeDi(eventi, contingenzaId).filter(function (e) { return e.valore.azione === 'data'; }).length;
+  }
+
+  function descriviEventoConseguenza(e, contingenza) {
+    var v = e.valore || {};
+    var nome = contingenza ? siglaContingenza(contingenza) : (v.procedura || 'conseguenza');
+    switch (v.azione) {
+      case 'avvio': return nome + ': timer avviato';
+      case 'ferma': return nome + ': timer fermato';
+      case 'rinforzo': return nome + ': rinforzo dato a fine intervallo';
+      case 'momento': return nome + ' ' + ((v.indice || 0) + 1) + ': ' + (v.presente ? 'presente, niente rinforzo' : 'assente, rinforzo dato');
+      default: return nome + ': conseguenza data';
+    }
+  }
+
   // ---- Valutazione delle preferenze -------------------------------------------
   // Ogni metodo dice cosa misura il numero inserito per ogni stimolo e in che
   // verso si ordina (per l'MSWO il rango medio: 1 = scelto per primo).
@@ -649,6 +758,8 @@
     fasePrecedente: fasePrecedente, valutaRegole: valutaRegole, descriviRitorno: descriviRitorno,
     METODI_PREFERENZA: METODI_PREFERENZA, PREFERENZE_SCADENZA_GIORNI: PREFERENZE_SCADENZA_GIORNI,
     classificaPreferenze: classificaPreferenze, ultimaPreferenza: ultimaPreferenza, suggerimentiRinforzatori: suggerimentiRinforzatori,
+    eventoComportamento: eventoComportamento, statoDro: statoDro, conteggioConsegne: conteggioConsegne,
+    descriviEventoConseguenza: descriviEventoConseguenza,
     controlla: controlla
   };
 

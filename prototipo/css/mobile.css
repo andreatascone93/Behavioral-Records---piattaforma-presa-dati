@@ -259,3 +259,16 @@ body { font-size: 16px; }
   font-size: 0.82rem;
 }
 .promemoria strong { color: var(--penna); }
+.promemoria li { display: grid; gap: 0.35rem; }
+.promemoria li + li { padding-top: 0.35rem; border-top: 1px solid color-mix(in srgb, var(--penna) 18%, transparent); }
+.promemoria .btn.piccolo { min-height: 40px; }
+.consegna, .dro-piede { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.dro { display: grid; gap: 0.4rem; }
+.dro.chiede { background: var(--superficie); border-radius: var(--r-piccolo); padding: 0.5rem; box-shadow: 0 0 0 2px var(--penna); }
+.dro-domanda { margin: 0; font-weight: 700; font-size: 0.95rem; }
+.dro-riga { margin: 0; }
+.dro-tempo { font-size: 1.15rem; font-weight: 500; }
+.dro-scelte { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.dro-scelte .btn { min-height: 52px; }
+.dro-scelte .btn:only-child { grid-column: 1 / -1; }
+.promemoria-annulla { justify-items: start; }
