@@ -39,6 +39,7 @@ docs/ricerca-letteratura.md   ricerca di letteratura su cui si basa il piano
 docs/obiettivi-numerici.md    obiettivi numerici, repertorio e libreria dei protocolli
 docs/organizzazione-seduta.md scaletta della seduta, probe e insegnamento
 docs/decisione-tecnologica.md scelte tecniche e sincronizzazione (passo 4)
+docs/design-esperienza-utente.md ricerca su design ed esperienza utente, con proposte per l'app
 app/                          l'app, file statici senza passaggi di build
   index.html                  pagina di ingresso
   desktop.html, mobile.html   configurazione e grafici; seduta e riepilogo
