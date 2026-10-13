@@ -16,6 +16,8 @@ I prototipi sono la versione **clinica** con **dati inventati**. La sincronizzaz
 
 ## Provare i prototipi
 
+Online: <https://andreatascone93.github.io/Behavioral-Records---piattaforma-presa-dati/>. Il workflow `.github/workflows/pages.yml` ripubblica la cartella `prototipo` su GitHub Pages a ogni push su `main`, dopo aver passato i test. Dal telefono basta aprire `mobile.html` a quell'indirizzo; i dati restano nel browser di ciascun dispositivo.
+
 Senza installare nulla: apri `prototipo/index.html` nel browser (doppio clic). In alternativa, con Node:
 
 ```sh
