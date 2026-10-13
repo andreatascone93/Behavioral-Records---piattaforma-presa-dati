@@ -129,6 +129,17 @@
 
   function percentuale(n, d) { return d ? (n / d) * 100 : null; }
 
+  function distribuzioneVuota() {
+    var d = { errore: 0 };
+    PROMPT.forEach(function (x) { d[x.id] = 0; });
+    return d;
+  }
+
+  function contaProva(dist, v) {
+    if (v.esito === 'errore') dist.errore++;
+    else dist[v.prompt] = (dist[v.prompt] || 0) + 1;
+  }
+
   // Posizione nella scala dei prompt: 0 = fisico totale, 5 = indipendente.
   function indicePrompt(id) { return PROMPT.findIndex(function (x) { return x.id === id; }); }
 
@@ -189,18 +200,38 @@
         return { valore: percentuale(si, esiti.length), dettagli: { intervalli: esiti.length, conComportamento: si, intervalloSec: p.intervalloSec } };
       }
       case 'dtt': {
-        var prove = ev.filter(function (e) { return e.tipo === 'prova'; });
-        var dist = {};
-        PROMPT.forEach(function (x) { dist[x.id] = 0; });
-        dist.errore = 0;
-        prove.forEach(function (e) {
-          if (e.valore.esito === 'errore') dist.errore++;
-          else dist[e.valore.prompt] = (dist[e.valore.prompt] || 0) + 1;
-        });
+        // Le prove di mantenimento (richieste facili su risposte già
+        // acquisite, alternate a quelle di training) non entrano nel valore:
+        // si contano a parte.
+        var tutte = ev.filter(function (e) { return e.tipo === 'prova'; });
+        var prove = tutte.filter(function (e) { return !e.valore.mantenimento; });
+        var dist = distribuzioneVuota();
+        prove.forEach(function (e) { contaProva(dist, e.valore); });
         // La prima prova della seduta serve ai criteri sulla prima prova del
         // giorno (sondaggio a freddo).
         var prima = prove.length ? { esito: prove[0].valore.esito, prompt: prove[0].valore.prompt } : null;
-        return { valore: percentuale(dist.I, prove.length), dettagli: { prove: prove.length, distribuzione: dist, primaProva: prima } };
+        var dettagli = { prove: prove.length, distribuzione: dist, primaProva: prima };
+        // Con gli elementi (es. i singoli tact), anche i dati per elemento.
+        var perElemento = {};
+        prove.forEach(function (e) {
+          var k = e.valore.elemento;
+          if (!k) return;
+          if (!perElemento[k]) perElemento[k] = { prove: 0, distribuzione: distribuzioneVuota(), primaProva: { esito: e.valore.esito, prompt: e.valore.prompt } };
+          perElemento[k].prove++;
+          contaProva(perElemento[k].distribuzione, e.valore);
+        });
+        if (Object.keys(perElemento).length) dettagli.perElemento = perElemento;
+        var mant = tutte.filter(function (e) { return e.valore.mantenimento; });
+        if (mant.length) {
+          var errori = {};
+          mant.forEach(function (e) { if (e.valore.esito === 'errore' && e.valore.elemento) errori[e.valore.elemento] = (errori[e.valore.elemento] || 0) + 1; });
+          dettagli.mantenimento = {
+            prove: mant.length,
+            corrette: mant.filter(function (e) { return e.valore.esito !== 'errore' && e.valore.prompt === 'I'; }).length,
+            errori: errori
+          };
+        }
+        return { valore: percentuale(dist.I, prove.length), dettagli: dettagli };
       }
       case 'task_analysis': {
         var perPasso = {};

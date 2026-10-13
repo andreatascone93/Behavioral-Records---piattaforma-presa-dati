@@ -407,3 +407,29 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .fedelta-testo ul, .fedelta-sessione ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
 .fedelta-mini { width: 160px; flex-shrink: 0; }
 .fedelta-sessione { margin-bottom: 0.6rem; font-size: 0.88rem; }
+
+/* Elenco di risposte, obiettivo numerico e repertorio */
+.elementi-carta { display: grid; gap: 0.5rem; padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--superficie-2); }
+.obiettivo-numerico { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.9rem; }
+.obiettivo-numerico.raggiunto strong { color: var(--bene); }
+.barra-obiettivo { flex: 1 1 120px; min-width: 120px; height: 8px; border-radius: 99px; background: var(--superficie); overflow: hidden; }
+.barra-obiettivo span { display: block; height: 100%; background: var(--penna); }
+.raggiunto .barra-obiettivo span { background: var(--bene); }
+.lista-elementi, .lista-obiettivi { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.88rem; }
+.lista-elementi li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.6rem; align-items: center; }
+.lista-elementi li.pronto strong { color: var(--bene); }
+.lista-obiettivi li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 0.8rem; align-items: center; }
+.avviso-ripasso { margin: 0; padding: 0.4rem 0.6rem; border-radius: 8px; background: var(--attenzione-tenue); }
+.tabella.elementi input, .tabella.elementi select { width: 100%; min-width: 0; }
+.repertorio { display: grid; gap: 0.8rem; }
+.categoria-rep h3 { margin: 0 0 0.35rem; font-size: 0.9rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-rep { display: inline-flex; align-items: center; gap: 4px; padding: 0.15rem 0.6rem; border-radius: 99px; font-size: 0.86rem; border: 1px solid var(--linea); background: var(--superficie); }
+.chip-rep.acquisito { border-color: var(--penna); background: var(--penna-tenue); }
+.chip-rep.ripasso { border-color: var(--attenzione); background: var(--attenzione-tenue); }
+.chip-rep .togli { border: 0; background: none; color: var(--testo-2); cursor: pointer; font: inherit; padding: 0 2px; }
+.legenda-rep { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.filtri-protocolli { max-width: 760px; }
+.protocollo { display: grid; gap: 0.6rem; }
+.azioni-riga { white-space: nowrap; }
+.azioni-riga .btn + .btn { margin-left: 4px; }

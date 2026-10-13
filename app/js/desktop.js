@@ -5,7 +5,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze, F = BR.fedelta;
+  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze, F = BR.fedelta, R = BR.repertorio, DR = BR.desktopRepertorio;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -20,6 +20,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
   var SCHEDE = [
     { id: 'grafici', nome: 'Grafici' },
     { id: 'programmi', nome: 'Programmi e target' },
+    { id: 'repertorio', nome: 'Repertorio' },
+    { id: 'protocolli', nome: 'Protocolli' },
     { id: 'piano', nome: 'Piano di intervento' },
     { id: 'preferenze', nome: 'Preferenze' },
     { id: 'schedule', nome: 'Schedule di seduta' },
@@ -109,7 +111,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
         return '<button type="button" role="tab" class="scheda' + (t.id === vista.scheda ? ' attiva' : '') + '" aria-selected="' + (t.id === vista.scheda) + '" data-azione="scheda" data-id="' + t.id + '">' + t.nome + '</button>';
       }).join('') + '</div>' +
       '<div class="contenuto" role="tabpanel">' + ({
-        grafici: vistaGrafici, programmi: vistaProgrammi, piano: D.vista, preferenze: function (x) { return DP.vista(x, stato); }, schedule: vistaSchedule, sessioni: vistaSessioni
+        grafici: vistaGrafici, programmi: vistaProgrammi, piano: D.vista, preferenze: function (x) { return DP.vista(x, stato); },
+        repertorio: function (x) { return DR.vistaRepertorio(x, stato); }, protocolli: function (x) { return DR.vistaProtocolli(x, stato); }, schedule: vistaSchedule, sessioni: vistaSessioni
       }[vista.scheda] || vistaGrafici)(s) + '</div>';
     main.innerHTML = html;
   }
@@ -142,7 +145,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
         return '<article class="carta-grafico">' +
           '<div class="carta-testa">' +
             '<div><h3>' + esc(t.nome) + '</h3>' +
-            '<p class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(M.descriviCriterio(criterio, t.metodo.tipo)) + '</p></div>' +
+            '<p class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(M.descriviCriterio(criterio, t.metodo.tipo)) +
+              (t.protocollo ? ' · ' + esc((t.protocollo.nomeManuale || t.protocollo.manuale) + ' ' + t.protocollo.codice) : '') + '</p></div>' +
             '<div class="carta-valore"><span class="dato grande">' + (ultimo ? M.formatta(ultimo.valore, t.metodo.tipo) : '–') + '</span>' +
             '<span class="tenue piccolo">' + esc(tipo.unita) + ' · ultima</span></div>' +
           '</div>' +
@@ -156,6 +160,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
             ? '<div class="proposta"><span>Il criterio è raggiunto. Vuoi passare alla fase di mantenimento?</span>' +
               '<button class="btn btn-primario" type="button" data-azione="cambia-fase" data-programma="' + pr.id + '" data-fase="t:mantenimento">Passa a mantenimento</button></div>'
             : '') +
+          (R.elementi(t) ? DR.cartaElementi(s, pr, t, punti, criterio) : '') +
           // Se il criterio usa un altro valore (livello di prompt, prima prova),
           // la sua linea non va sul grafico delle risposte indipendenti.
           '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: altroValore(criterio) ? null : criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
@@ -281,7 +286,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
           var funz = t.ruolo === 'problema' ? P.descriviFunzione(t) : '';
           return '<tr><td><strong>' + esc(t.nome) + '</strong><div class="tenue piccolo definizione">' + esc(t.definizione.include || '') + '</div></td>' +
             '<td><span class="pillola senza-punto ruolo-' + (t.ruolo || 'abilita') + '">' + esc(ruolo.breve) + '</span>' + (funz ? '<div class="tenue piccolo">Funzione: ' + esc(funz.toLowerCase()) + '</div>' : '') + '</td>' +
-            '<td>' + esc(tipo.nome) + parametriBrevi(t.metodo) + '<div class="tenue piccolo">versione ' + t.metodo.versione + '</div></td>' +
+            '<td>' + esc(tipo.nome) + parametriBrevi(t.metodo) + '<div class="tenue piccolo">versione ' + t.metodo.versione + '</div>' + DR.riassuntoTabella(s, pr, t) + '</td>' +
             '<td>' + esc(tipo.strumentoNome) + '</td>' +
             '<td class="piccolo">' + esc(M.descriviCriterio(t.metodo.criterio, t.metodo.tipo)) + '</td>' +
             '<td class="num"><button class="btn btn-piatto" type="button" data-azione="modifica-target" data-programma="' + pr.id + '" data-id="' + t.id + '">Modifica</button></td></tr>';
@@ -536,6 +541,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
           '</div>' +
           '<div id="t-parametri"></div>' +
         '</fieldset>' +
+        DR.campiTarget(bozza) +
         '<fieldset><legend>Criterio di padronanza</legend>' +
           '<label class="spunta"><input id="t-usa-criterio" type="checkbox"' + (c ? ' checked' : '') + '> Usa un criterio</label>' +
           '<div class="campi-riga" id="t-criterio">' +
@@ -639,7 +645,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     ], {
       larga: true,
       dopo: function (form) {
-        aggiornaTipo(form); aggiornaCriterio(form); aggiornaRuolo(form, false); aggiornaObiettivo(form);
+        aggiornaTipo(form); aggiornaCriterio(form); aggiornaRuolo(form, false); aggiornaObiettivo(form); DR.attivaCampi(form);
         form.querySelector('#t-tipo').addEventListener('change', function () { aggiornaTipo(form); });
         form.querySelector('#t-usa-criterio').addEventListener('change', function () { aggiornaCriterio(form); });
         form.querySelector('#t-ruolo').addEventListener('change', function () { aggiornaRuolo(form, true); });
@@ -699,6 +705,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       bozza.metodo.tipo = tipo;
       bozza.metodo.parametri = parametri;
       bozza.metodo.criterio = f.querySelector('#t-usa-criterio').checked ? leggiCriterio(f) : null;
+      DR.leggiTarget(f, bozza);
 
       if (nuovo) {
         pr.target.push(bozza);
@@ -861,6 +868,28 @@ BR.archivio.avvia().then(function (statoIniziale) {
           .then(function (ok) { if (ok) avviaFase(pr, 'p:' + fp.id, 'Fase del piano'); });
         break;
       }
+      case 'elementi': {
+        var te = pr.target.find(function (t) { return t.id === b.getAttribute('data-id'); });
+        if (te && te.elementi) DR.gestisciElementi(ctxPiano, s, pr, te);
+        break;
+      }
+      case 'elemento-acquisito': {
+        var ta = pr.target.find(function (t) { return t.id === b.getAttribute('data-target'); });
+        if (ta) DR.segnaAcquisito(ctxPiano, pr, ta, b.getAttribute('data-id'));
+        break;
+      }
+      case 'repertorio-aggiungi': DR.aggiungiRepertorio(ctxPiano, s); break;
+      case 'repertorio-togli': DR.togliRepertorio(ctxPiano, s, b.getAttribute('data-id')); break;
+      case 'protocollo-modifica': DR.modificaVoce(ctxPiano, stato, b.getAttribute('data-manuale'), b.getAttribute('data-codice')); break;
+      case 'protocollo-nuovo-manuale': DR.nuovoManuale(ctxPiano, stato); break;
+      case 'protocollo-voci': DR.aggiungiVoci(ctxPiano, stato, b.getAttribute('data-manuale')); break;
+      case 'protocollo-obiettivo':
+        DR.creaObiettivo(ctxPiano, s, stato, b.getAttribute('data-manuale'), b.getAttribute('data-codice'), function () {
+          vista.scheda = 'programmi';
+          U.preferenza('desktop-scheda', vista.scheda);
+          disegna();
+        });
+        break;
       case 'modifica-target':
         modificaTarget(pr, pr.target.find(function (t) { return t.id === b.getAttribute('data-id'); }));
         break;
@@ -901,6 +930,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   });
 
   document.addEventListener('change', function (e) {
+    if (DR.cambio(e)) { disegna(); return; }
     var campo = e.target.getAttribute && e.target.getAttribute('data-campo-schedule');
     if (!campo) return;
     var sc = corrente().schedule;

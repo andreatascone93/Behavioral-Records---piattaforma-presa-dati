@@ -149,7 +149,27 @@ body { font-size: 16px; }
 .pallino.indip { background: var(--inchiostro); color: var(--fondo); }
 .pallino.aiuto { background: var(--penna-tenue); color: var(--penna); font-weight: 700; }
 .pallino.errore { background: var(--critico-tenue); color: var(--critico); font-weight: 700; }
+.pallino.facile { width: 22px; height: 22px; align-self: center; font-size: 0.65rem; opacity: 0.85; }
 .livelli { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+/* Elementi: risposta da presentare e richieste facili alternate */
+.elementi-seduta { display: grid; gap: 8px; }
+.prossima { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--penna); background: var(--penna-tenue); }
+.prossima.facile { border-color: var(--bene); background: var(--bene-tenue); }
+.prossima .etichetta { font-size: 0.75rem; }
+.prossima-testo { font-size: 1.35rem; }
+.scelta-elementi { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: 0.85rem;
+  min-height: 36px; padding: 0.3rem 0.75rem;
+  border-radius: 99px; border: 1px solid var(--linea);
+  background: var(--superficie); color: var(--testo);
+  touch-action: manipulation; cursor: pointer;
+}
+.chip.sel { border-color: var(--penna); background: var(--penna); color: var(--su-penna); }
+.chip.facile { border-style: dashed; }
+.chip.facile.sel { border-style: solid; border-color: var(--bene); background: var(--bene); color: var(--superficie); }
+.avviso-elementi { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--attenzione-tenue); }
 .tasto-livello {
   flex-direction: column;
   gap: 0;

@@ -35,7 +35,7 @@ create sequence if not exists public.br_seq;
 create table if not exists public.documenti (
   studio_id text not null references public.studi (id),
   id text not null,
-  tipo text not null check (tipo in ('soggetto', 'sessione', 'operatore')),
+  tipo text not null check (tipo in ('soggetto', 'sessione', 'operatore', 'protocollo')),
   dati jsonb not null,
   versione integer not null default 1,
   seq bigint not null default nextval('public.br_seq'),
@@ -44,6 +44,9 @@ create table if not exists public.documenti (
   primary key (studio_id, id)
 );
 create index if not exists documenti_seq on public.documenti (studio_id, seq);
+-- Database creati prima della libreria dei protocolli: si aggiorna il vincolo.
+alter table public.documenti drop constraint if exists documenti_tipo_check;
+alter table public.documenti add constraint documenti_tipo_check check (tipo in ('soggetto', 'sessione', 'operatore', 'protocollo'));
 
 create table if not exists public.eventi (
   studio_id text not null references public.studi (id),
