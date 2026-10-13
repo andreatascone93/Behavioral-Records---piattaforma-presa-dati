@@ -1,0 +1,271 @@
+/*
+ * Tema condiviso. Concetto: il foglio dati del terapista. Fondo neutro
+ * appena azzurrato come la carta millimetrata, inchiostro scuro per i dati
+ * (i grafici ABA si disegnano in nero), blu "penna a sfera" per le azioni.
+ * Atkinson Hyperlegible per il testo: pensato per la leggibilità, utile a chi
+ * registra in seduta guardando il telefono di sfuggita.
+ */
+:root {
+  --fondo: #f3f5f8;
+  --superficie: #ffffff;
+  --superficie-2: #eaeef3;
+  --inchiostro: #141c28;
+  --testo-2: #556172;
+  --linea: #d6dce4;
+  --griglia: #e4e8ee;
+  --penna: #2c4bd1;
+  --penna-tenue: #e3e8fb;
+  --su-penna: #ffffff;
+  --bene: #1d7448;
+  --bene-tenue: #e0f1e7;
+  --attenzione: #9a5a00;
+  --attenzione-tenue: #fbeedb;
+  --critico: #b3261e;
+  --critico-tenue: #fbe4e1;
+
+  --f-titoli: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --f-testo: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --f-dati: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --r: 10px;
+  --r-piccolo: 6px;
+  --ombra: 0 1px 2px rgb(20 28 40 / 0.06), 0 4px 16px rgb(20 28 40 / 0.06);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fondo: #0e131a;
+    --superficie: #161d27;
+    --superficie-2: #1d2531;
+    --inchiostro: #e7ecf3;
+    --testo-2: #9ba7b8;
+    --linea: #2b3544;
+    --griglia: #222b38;
+    --penna: #8fa3ff;
+    --penna-tenue: #222c4d;
+    --su-penna: #0e131a;
+    --bene: #5cc994;
+    --bene-tenue: #16301f;
+    --attenzione: #f0ad55;
+    --attenzione-tenue: #33250f;
+    --critico: #ff8a7f;
+    --critico-tenue: #3a1a18;
+    --ombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --fondo: #0e131a;
+  --superficie: #161d27;
+  --superficie-2: #1d2531;
+  --inchiostro: #e7ecf3;
+  --testo-2: #9ba7b8;
+  --linea: #2b3544;
+  --griglia: #222b38;
+  --penna: #8fa3ff;
+  --penna-tenue: #222c4d;
+  --su-penna: #0e131a;
+  --bene: #5cc994;
+  --bene-tenue: #16301f;
+  --attenzione: #f0ad55;
+  --attenzione-tenue: #33250f;
+  --critico: #ff8a7f;
+  --critico-tenue: #3a1a18;
+  --ombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { margin: 0; }
+body {
+  background: var(--fondo);
+  color: var(--inchiostro);
+  font-family: var(--f-testo);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--f-titoli);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+
+a { color: var(--penna); }
+.dato { font-family: var(--f-dati); font-variant-numeric: tabular-nums; }
+.etichetta {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--testo-2);
+  font-weight: 700;
+}
+.tenue { color: var(--testo-2); }
+
+/* Pulsanti */
+.btn {
+  appearance: none;
+  border: 1px solid var(--linea);
+  background: var(--superficie);
+  color: var(--inchiostro);
+  font: inherit;
+  font-weight: 700;
+  border-radius: var(--r-piccolo);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+}
+a.btn { text-decoration: none; }
+.btn:hover { border-color: var(--testo-2); }
+.btn-primario { background: var(--penna); border-color: var(--penna); color: var(--su-penna); }
+.btn-primario:hover { border-color: var(--penna); filter: brightness(1.08); }
+.btn-pericolo { color: var(--critico); }
+.btn-piatto { border-color: transparent; background: transparent; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--penna); outline-offset: 2px; }
+
+/* Pillole di stato */
+.pillola {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--superficie-2);
+  color: var(--testo-2);
+  white-space: nowrap;
+}
+.pillola::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pillola.bene { background: var(--bene-tenue); color: var(--bene); }
+.pillola.attenzione { background: var(--attenzione-tenue); color: var(--attenzione); }
+.pillola.critico { background: var(--critico-tenue); color: var(--critico); }
+.pillola.penna { background: var(--penna-tenue); color: var(--penna); }
+.pillola.senza-punto::before { display: none; }
+
+/* Campi dei moduli */
+.campo { display: grid; gap: 0.3rem; }
+.campo label { font-weight: 700; font-size: 0.85rem; }
+.campo .aiuto { font-size: 0.8rem; color: var(--testo-2); }
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  font: inherit;
+  color: var(--inchiostro);
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: var(--r-piccolo);
+  padding: 0.5rem 0.65rem;
+  width: 100%;
+  min-height: 40px;
+}
+textarea { min-height: 70px; resize: vertical; }
+
+/* Grafici */
+.grafico { width: 100%; height: auto; display: block; overflow: visible; }
+.grafico text, .mini text { font-family: var(--f-dati); }
+.g-griglia { stroke: var(--griglia); stroke-width: 1; }
+.g-asse { stroke: var(--testo-2); stroke-width: 1; }
+.g-tacca { fill: var(--testo-2); font-size: 11px; }
+.g-titolo-asse { fill: var(--testo-2); font-size: 11px; }
+.g-fase { fill: var(--inchiostro); font-size: 11.5px; font-weight: 600; font-family: var(--f-testo) !important; }
+.g-cambio { stroke: var(--inchiostro); stroke-width: 1.25; stroke-dasharray: 5 4; }
+.g-criterio { stroke: var(--bene); stroke-width: 1.25; stroke-dasharray: 2 4; }
+.g-criterio-testo { fill: var(--bene); font-size: 11px; }
+.g-linea { fill: none; stroke: var(--inchiostro); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.g-punto { fill: var(--inchiostro); stroke: var(--superficie); stroke-width: 2; }
+.g-ultimo { fill: var(--penna); }
+.g-tocco { fill: transparent; cursor: pointer; }
+.g-tocco:focus-visible { outline: none; stroke: var(--penna); stroke-width: 2; }
+.g-vuoto { fill: var(--testo-2); font-size: 13px; font-family: var(--f-testo) !important; }
+.mini { width: 100%; height: auto; display: block; }
+.mini-area { fill: var(--penna-tenue); }
+
+.suggerimento {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--inchiostro);
+  color: var(--fondo);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--r-piccolo);
+  white-space: pre-line;
+  max-width: 240px;
+  box-shadow: var(--ombra);
+}
+
+/* Avviso rete */
+.avviso {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--r);
+  background: var(--attenzione-tenue);
+  color: var(--inchiostro);
+  border: 1px solid color-mix(in srgb, var(--attenzione) 35%, transparent);
+  font-size: 0.9rem;
+}
+
+/* Finestra di conferma dentro la pagina */
+.velo {
+  position: fixed;
+  inset: 0;
+  background: rgb(10 14 20 / 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 40;
+}
+.finestra {
+  background: var(--superficie);
+  border-radius: var(--r);
+  box-shadow: var(--ombra);
+  padding: 1.25rem;
+  width: min(440px, 100%);
+  display: grid;
+  gap: 0.9rem;
+}
+.finestra .azioni { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--inchiostro);
+  color: var(--fondo);
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  z-index: 60;
+  box-shadow: var(--ombra);
+  max-width: calc(100vw - 32px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: entra 0.2s ease-out; }
+  @keyframes entra { from { opacity: 0; transform: translate(-50%, 8px); } }
+}
