@@ -257,3 +257,25 @@ test('archivio: la fase DRI di PZ-022 segnala lo stallo', () => {
   assert.equal(r.stallo, true);
   assert.equal(r.sessioni, 12);
 });
+
+test('piano: classifica delle preferenze per metodo', () => {
+  const coppie = piano.classificaPreferenze({ metodo: 'paired', stimoli: [{ nome: 'A', valore: 20 }, { nome: 'B', valore: 90 }, { nome: 'C', valore: 50 }, { nome: '', valore: 99 }] });
+  assert.deepEqual(coppie.map((x) => x.nome), ['B', 'C', 'A']);
+  assert.deepEqual(coppie.map((x) => x.livello), ['alta', 'media', 'bassa']);
+  // MSWO: rango medio, 1 = scelto per primo.
+  const mswo = piano.classificaPreferenze({ metodo: 'mswo', stimoli: [{ nome: 'A', valore: 3 }, { nome: 'B', valore: 1 }, { nome: 'C', valore: 2 }] });
+  assert.deepEqual(mswo.map((x) => x.nome), ['B', 'C', 'A']);
+  assert.equal(mswo[0].livello, 'alta');
+  assert.equal(mswo[2].livello, 'bassa');
+});
+
+test('piano: suggerimenti dalla valutazione più recente e scadenza', () => {
+  const stato = datiFinti.genera('2026-10-13T12:00:00');
+  const [pz14, pz22] = stato.config.soggetti;
+  const s14 = piano.suggerimentiRinforzatori(pz14, '2026-10-13T12:00:00');
+  assert.equal(s14.valutazione.metodo, 'paired');
+  assert.equal(s14.stimoli[0].nome, 'Bolle di sapone');
+  assert.equal(s14.scaduta, false);
+  assert.equal(piano.suggerimentiRinforzatori(pz22, '2026-10-13T12:00:00').scaduta, true);
+  assert.equal(piano.suggerimentiRinforzatori({}, '2026-10-13').valutazione, null);
+});
