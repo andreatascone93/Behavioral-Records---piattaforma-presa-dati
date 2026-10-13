@@ -143,6 +143,22 @@
   }
 
   function promemoria(sess, pr, t) {
+    return pianoCrisi(pr, t) + conseguenze(sess, pr, t);
+  }
+
+  // Per i comportamenti da ridurre, il piano di crisi a portata di mano.
+  function pianoCrisi(pr, t) {
+    if (t.ruolo !== 'problema') return '';
+    var c = P.sicurezzaDi(pr).crisi;
+    if (!c.passi) return '';
+    return '<details class="crisi"><summary>Piano di crisi</summary>' +
+      (c.segnali ? '<p><strong>Quando:</strong> ' + esc(c.segnali) + '</p>' : '') +
+      '<p><strong>Cosa fare:</strong> ' + esc(c.passi) + '</p>' +
+      (c.fine ? '<p><strong>È finita quando:</strong> ' + esc(c.fine) + '</p>' : '') +
+      (c.contatti ? '<p><strong>Avvisare:</strong> ' + esc(c.contatti) + '</p>' : '') + '</details>';
+  }
+
+  function conseguenze(sess, pr, t) {
     var righe = contingenzeDi(sess, pr, t);
     if (!righe.length) return '';
     var tm = {};

@@ -406,6 +406,30 @@
    * la letteratura e il Codice etico BACB considerano parte di un piano
    * completo. Restituisce [{ livello: 'attenzione' | 'info', testo }].
    */
+  // ---- Sicurezza: piano di crisi, consenso, assenso ---------------------------
+  var CONSENSO_DA = {
+    genitori: 'Genitori',
+    tutore: 'Tutore legale',
+    paziente: 'Il paziente (maggiorenne)'
+  };
+
+  // Programma con le parti di sicurezza sempre presenti (anche se vuote).
+  function sicurezzaDi(programma) {
+    var x = programma.sicurezza || {};
+    return {
+      crisi: Object.assign({ segnali: '', passi: '', fine: '', contatti: '' }, x.crisi),
+      consenso: Object.assign({ data: '', da: '', restrittive: false, note: '' }, x.consenso),
+      assenso: Object.assign({ segni: '', dissenso: '', cosaFare: '' }, x.assenso),
+      revisione: x.revisione || ''
+    };
+  }
+
+  function usaRestrittive(programma) {
+    return ((programma.piano && programma.piano.fasi) || []).some(function (f) {
+      return (f.contingenze || []).some(function (c) { return PROCEDURE[c.procedura] && PROCEDURE[c.procedura].restrittiva; });
+    });
+  }
+
   function controlla(programma) {
     var out = [];
     var targets = programma.target || [];
@@ -474,6 +498,18 @@
       }
     });
 
+    var sic = sicurezzaDi(programma);
+    if (usaRestrittive(programma) && !(sic.consenso.data && sic.consenso.restrittive)) {
+      out.push({ livello: 'attenzione', testo: 'Il piano usa procedure restrittive: registra il consenso informato scritto che le comprende (Sicurezza e consenso).' });
+    } else if (fasi.length && !sic.consenso.data) {
+      out.push({ livello: 'info', testo: 'Manca la data del consenso informato al piano.' });
+    }
+    if (problemi.length && !sic.crisi.passi.trim()) {
+      out.push({ livello: 'info', testo: 'Manca il piano di crisi per i comportamenti pericolosi o che non si possono lasciare in estinzione.' });
+    }
+    if (fasi.length && !sic.assenso.dissenso.trim()) {
+      out.push({ livello: 'info', testo: 'Indica come il paziente mostra assenso e dissenso, e cosa fare quando lo ritira.' });
+    }
     return out;
   }
 
@@ -760,6 +796,7 @@
     classificaPreferenze: classificaPreferenze, ultimaPreferenza: ultimaPreferenza, suggerimentiRinforzatori: suggerimentiRinforzatori,
     eventoComportamento: eventoComportamento, statoDro: statoDro, conteggioConsegne: conteggioConsegne,
     descriviEventoConseguenza: descriviEventoConseguenza,
+    CONSENSO_DA: CONSENSO_DA, sicurezzaDi: sicurezzaDi, usaRestrittive: usaRestrittive,
     controlla: controlla
   };
 

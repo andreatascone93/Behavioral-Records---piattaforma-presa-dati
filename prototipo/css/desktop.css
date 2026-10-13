@@ -381,3 +381,8 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
   .classifica li { grid-template-columns: 1.6rem 1fr auto; }
   .classifica .pref-barra, .classifica .livello { display: none; }
 }
+
+/* Sicurezza e consenso */
+.sicurezza { border: 1px solid var(--linea); border-radius: var(--r-piccolo); padding: 0.75rem 0.9rem; display: grid; gap: 0.5rem; }
+.sicurezza-testa { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.sicurezza-testa h3 { font-size: 1rem; }

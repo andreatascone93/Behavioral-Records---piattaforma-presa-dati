@@ -328,3 +328,24 @@ test('le conseguenze registrate non cambiano le misure e non si annullano con â€
   const annulla = archivio.annullaUltimo(stato, { id: 's' }, { id: 't', metodo: {} });
   assert.equal(annulla.rif, a.id);
 });
+
+test('piano: controlli su consenso, assenso e piano di crisi', () => {
+  const tc = { id: 'p', nome: 'Colpire', ruolo: 'problema', funzione: { ipotesi: 'fuga' } };
+  const ts = { id: 's', nome: 'Chiede pausa', ruolo: 'sostitutivo', sostituisce: 'p' };
+  const timeout = { id: 'c', targetId: 'p', procedura: 'timeout', motivazione: 'DRA ed estinzione provati per 6 settimane' };
+  const pr = { target: [tc, ts], piano: { fasi: [{ id: 'f', nome: 'Intervento', contingenze: [timeout] }] } };
+  const testi = () => piano.controlla(pr).map((a) => a.testo).join('\n');
+  assert.match(testi(), /procedure restrittive: registra il consenso/);
+  assert.match(testi(), /piano di crisi/);
+  pr.sicurezza = { consenso: { data: '2026-10-01', restrittive: true }, crisi: { passi: 'Allontanare gli altri' }, assenso: { dissenso: 'Si allontana' } };
+  assert.doesNotMatch(testi(), /consenso|piano di crisi|assenso e dissenso/);
+  assert.equal(piano.usaRestrittive(pr), true);
+});
+
+test('dati finti: preferenze e sicurezza presenti, archivio alla versione 3', () => {
+  const stato = datiFinti.genera('2026-10-13T12:00:00');
+  assert.equal(stato.versione, 3);
+  assert.ok(stato.config.soggetti.every((s) => s.preferenze && s.preferenze.length));
+  const aggr = stato.config.soggetti[0].programmi[0];
+  assert.ok(piano.sicurezzaDi(aggr).crisi.passi.length > 0);
+});
