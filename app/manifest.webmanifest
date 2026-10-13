@@ -1,0 +1,22 @@
+{
+  "name": "Behavioral Records",
+  "short_name": "B. Records",
+  "description": "Registrazione dei dati ABA: configurazione e grafici sul desktop, seduta sul telefono anche senza rete.",
+  "lang": "it",
+  "id": "./",
+  "start_url": "./index.html?app=1",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f8",
+  "theme_color": "#141c28",
+  "icons": [
+    { "src": "icone/icona-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icone/icona-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icone/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icone/icona.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Seduta (telefono)", "url": "./mobile.html", "icons": [{ "src": "icone/icona-192.png", "sizes": "192x192" }] },
+    { "name": "Desktop", "url": "./desktop.html", "icons": [{ "src": "icone/icona-192.png", "sizes": "192x192" }] }
+  ]
+}

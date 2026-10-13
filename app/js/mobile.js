@@ -3,13 +3,13 @@
  * a portata di dito, riepilogo configurabile. Funziona senza rete: ogni tocco
  * è un evento salvato subito sul telefono, inviato quando torna la connessione.
  */
-(function () {
+BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
   var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui;
   var esc = U.esc;
 
-  var stato = A.carica();
+  var stato = statoIniziale;
   var vista = { schermo: 'oggi', soggettoId: null, sessioneId: null, personalizza: false };
   var app = document.getElementById('app');
   var wakeLock = null;
@@ -48,6 +48,12 @@
   }
 
   function provaSincronizzazione(silenziosa) {
+    if (A.cloudAttivo()) {
+      BR.cloud.sincronizzaOra().then(function (r) {
+        if (!silenziosa) U.toast(r ? 'Sincronizzato con il cloud' : (BR.cloud.info().errore || 'Cloud non raggiungibile: i dati restano sul telefono'));
+      });
+      return 0;
+    }
     var n = A.sincronizza(stato);
     salva();
     if (n && !silenziosa) U.toast('Inviati ' + n + (n === 1 ? ' evento' : ' eventi') + ' al desktop');
@@ -88,8 +94,11 @@
       }).join('') + '</div>' +
       '<footer class="piede">' +
         '<a href="desktop.html">Apri il desktop</a>' +
-        '<button class="btn btn-piatto piccolo" type="button" data-azione="ripristina">Ripristina dati finti</button>' +
-        '<p class="tenue piccolo">Prototipo con dati inventati. Il pulsante Online/Offline in alto simula la rete.</p>' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="cloud">' + esc(BR.pannelloCloud.etichetta(BR.cloud.info()).testo) + ' · Cloud</button>' +
+        (A.cloudAttivo() ? '' : '<button class="btn btn-piatto piccolo" type="button" data-azione="ripristina">Ripristina dati di esempio</button>') +
+        '<p class="tenue piccolo">' + (A.cloudAttivo()
+          ? 'Le sedute si sincronizzano con il cloud dello studio. Il pulsante Online/Offline in alto mette in pausa l’invio.'
+          : 'Dati di esempio, solo su questo telefono. Il pulsante Online/Offline in alto simula la rete.') + '</p>' +
       '</footer>';
   }
 
@@ -581,6 +590,7 @@
         break;
       case 'sincronizza': provaSincronizzazione(); disegna(); break;
       case 'oggi': vai('oggi'); break;
+      case 'cloud': BR.pannelloCloud.apri(); break;
       case 'inizia': {
         vista.soggettoId = id;
         var sess = A.apriSessione(stato, sog());
@@ -722,5 +732,18 @@
     if (document.visibilityState === 'visible') { wakeLock = null; gestisciWakeLock(); }
   });
 
+  // Stato del cloud: in seduta si aggiorna solo il pulsante della rete.
+  BR.cloud.suCambio(function () {
+    if (document.querySelector('.velo')) return;
+    if (vista.schermo === 'seduta') {
+      var r = app.querySelector('.rete');
+      if (r) r.outerHTML = testataRete();
+    } else disegna();
+  });
+
   disegna();
-})();
+  return BR.cloud.avvia();
+}).catch(function (e) {
+  if (window.console) console.error(e);
+  document.body.insertAdjacentHTML('afterbegin', '<p class="avviso" role="alert">L’app non è riuscita a partire: ' + BR.ui.esc(e && e.message || String(e)) + '. Ricarica la pagina.</p>');
+});

@@ -1,36 +1,92 @@
 /*
- * Archivio locale del prototipo. Tutto vive nel browser (localStorage):
- * desktop e mobile aperti nello stesso browser condividono gli stessi dati,
- * e la sincronizzazione con il "server" è simulata marcando gli eventi.
+ * Archivio dei dati sul dispositivo. Nel browser vive in IndexedDB (vedi
+ * deposito.js), con localStorage come riserva; in Node resta in memoria.
+ * Senza cloud collegato la sincronizzazione è simulata come nei prototipi:
+ * desktop e telefono aperti nello stesso browser condividono gli stessi dati.
+ * Con il cloud collegato (cloud.js) la sincronizzazione è vera.
  */
 (function (root) {
   'use strict';
 
   var M = root.BR.modello;
-  var CHIAVE = 'behavioral-records-prototipo-v3';
-  var memoria = null; // copia di riserva se localStorage non è disponibile
+  var CHIAVE = 'behavioral-records-prototipo-v3'; // localStorage dei prototipi
+  var CHIAVE_DEPOSITO = 'stato';
+  var memoria = null;   // stato corrente di questa pagina
+  var usaDeposito = false;
+  var canale = null;
+  var ascoltatori = [];
 
-  function leggi() {
+  function valido(s) { return s && s.versione === 3 ? s : null; }
+
+  function leggiLocale() {
     try {
       var raw = root.localStorage.getItem(CHIAVE);
       if (raw) return JSON.parse(raw);
     } catch (e) { /* storage bloccato o dati corrotti */ }
-    return memoria;
+    return null;
+  }
+
+  function avvisaAltreSchede() {
+    try { if (canale) canale.postMessage('stato'); } catch (e) { /* scheda chiusa */ }
   }
 
   function salva(stato) {
     memoria = stato;
+    if (usaDeposito) {
+      root.BR.deposito.scrivi(CHIAVE_DEPOSITO, stato).then(avvisaAltreSchede, function (e) {
+        if (root.console) root.console.error('Salvataggio non riuscito', e);
+      });
+      return;
+    }
     try { root.localStorage.setItem(CHIAVE, JSON.stringify(stato)); } catch (e) { /* resta in memoria */ }
   }
 
+  // Versione sincrona, per Node e per i test: dati in memoria o di esempio.
   function carica() {
-    var s = leggi();
-    if (!s || s.versione !== 3) {
+    var s = valido(memoria) || valido(typeof root.localStorage !== 'undefined' ? leggiLocale() : null);
+    if (!s) {
       s = root.BR.datiFinti.genera();
       salva(s);
     }
+    memoria = s;
     return s;
   }
+
+  // Avvio nel browser: apre IndexedDB e vi porta i dati dei prototipi, se ci
+  // sono. Al primo avvio assoluto crea i dati di esempio.
+  function avvia() {
+    var D = root.BR.deposito;
+    return (D ? D.disponibile() : Promise.resolve(false)).then(function (ok) {
+      usaDeposito = ok;
+      if (!ok) return carica();
+      return D.leggi(CHIAVE_DEPOSITO).then(function (s) {
+        s = valido(s) || valido(leggiLocale()) || root.BR.datiFinti.genera();
+        memoria = s;
+        D.persisti();
+        return D.scrivi(CHIAVE_DEPOSITO, s).then(function () {
+          try { root.localStorage.removeItem(CHIAVE); } catch (e) { /* niente da togliere */ }
+          return s;
+        });
+      });
+    }).then(function (s) {
+      if (typeof root.BroadcastChannel === 'function' && !canale) {
+        canale = new root.BroadcastChannel('behavioral-records');
+        canale.onmessage = function () { ricarica(); };
+      }
+      return s;
+    });
+  }
+
+  function ricarica() {
+    var p = usaDeposito ? root.BR.deposito.leggi(CHIAVE_DEPOSITO) : Promise.resolve(leggiLocale());
+    p.then(function (s) {
+      if (!valido(s)) return;
+      memoria = s;
+      notifica(s);
+    });
+  }
+
+  function attuale() { return memoria; }
 
   function ripristina() {
     var s = root.BR.datiFinti.genera();
@@ -38,11 +94,20 @@
     return s;
   }
 
-  // Avvisa quando un'altra scheda (es. il prototipo mobile) cambia i dati.
+  // cb(stato) quando i dati cambiano fuori da questa pagina: un'altra scheda
+  // dello stesso browser oppure il cloud.
   function ascolta(cb) {
-    root.addEventListener('storage', function (e) {
-      if (e.key === CHIAVE) cb(leggi());
-    });
+    ascoltatori.push(cb);
+    if (ascoltatori.length === 1 && root.addEventListener) {
+      root.addEventListener('storage', function (e) {
+        if (e.key === CHIAVE && !usaDeposito) ricarica();
+      });
+    }
+  }
+
+  function notifica(stato) {
+    memoria = stato;
+    ascoltatori.forEach(function (cb) { cb(stato); });
   }
 
   // ---- Consultazioni ------------------------------------------------------
@@ -198,11 +263,16 @@
     return stato.eventi.filter(function (e) { return !e.sincronizzato; }).length;
   }
 
-  // Invia gli eventi non confermati. Il server li accetta una sola volta per
-  // id, quindi rimandarli è innocuo. Le sessioni chiuse diventano visibili al
-  // desktop quando tutti i loro eventi sono arrivati.
+  function cloudAttivo() { return !!(root.BR.cloud && root.BR.cloud.attivo()); }
+
+  // Con il cloud collegato avvia un ciclo vero (asincrono) e restituisce 0:
+  // l'esito arriva dopo. Senza cloud, la sincronizzazione è simulata: il
+  // "server" accetta gli eventi una sola volta per id, quindi rimandarli è
+  // innocuo; le sessioni chiuse diventano visibili al desktop quando tutti i
+  // loro eventi sono arrivati.
   function sincronizza(stato) {
     if (!online(stato)) return 0;
+    if (cloudAttivo()) { root.BR.cloud.sincronizzaPresto(); return 0; }
     var inviati = 0;
     stato.eventi.forEach(function (e) {
       if (!e.sincronizzato) { e.sincronizzato = true; inviati++; }
@@ -262,7 +332,8 @@
 
   var api = {
     CHIAVE: CHIAVE,
-    carica: carica, salva: salva, ripristina: ripristina, ascolta: ascolta,
+    carica: carica, avvia: avvia, salva: salva, ripristina: ripristina, ascolta: ascolta,
+    notifica: notifica, attuale: attuale, cloudAttivo: cloudAttivo,
     soggetto: soggetto, operatore: operatore, targetDi: targetDi, trovaTarget: trovaTarget,
     faseDiSessione: faseDiSessione, faseCorrente: faseCorrente, voceDiSessione: voceDiSessione,
     voceCorrente: voceCorrente, nomeFaseCorrente: nomeFaseCorrente, criterioCorrente: criterioCorrente,
