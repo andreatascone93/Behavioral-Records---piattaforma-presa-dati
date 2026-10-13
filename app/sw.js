@@ -37,6 +37,7 @@ var FILE = [
   'js/desktop-piano.js',
   'js/desktop-preferenze.js',
   'js/desktop-repertorio.js',
+  'js/desktop-seduta.js',
   'js/desktop.js',
   'js/mobile.js',
   'icone/icona.svg',

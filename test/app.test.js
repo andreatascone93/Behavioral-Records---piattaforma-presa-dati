@@ -52,6 +52,9 @@ test('le pagine dell’app caricano gli script nell’ordine giusto', () => {
     const script = [...html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
     const prima = (a, b) => assert.ok(script.indexOf(a) !== -1 && script.indexOf(a) < script.indexOf(b), pagina + ': ' + a + ' prima di ' + b);
     prima('config.js', 'js/cloud.js');
+    prima('js/modello.js', 'js/seduta.js');
+    prima('js/seduta.js', 'js/dati-finti.js');
+    prima('js/seduta.js', 'js/archivio.js');
     prima('js/deposito.js', 'js/archivio.js');
     prima('js/archivio.js', 'js/cloud.js');
     prima('js/sincronizzazione.js', 'js/cloud.js');

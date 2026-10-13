@@ -6,7 +6,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui, F = BR.fedelta, R = BR.repertorio;
+  var M = BR.modello, Sd = BR.seduta, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui, F = BR.fedelta, R = BR.repertorio;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -83,7 +83,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
         return '<article class="carta paziente">' +
           '<div class="paziente-testa"><div><span class="dato codice">' + esc(s.codice) + '</span> <span class="tenue">' + esc(s.iniziali) + ' · ' + U.eta(s.annoNascita) + ' anni</span></div>' +
           (aperta ? '<span class="pillola penna">Seduta aperta</span>' : '') + '</div>' +
-          '<p class="tenue piccolo">' + s.schedule.voci.length + ' target · ' + s.schedule.durataMin + ' min · ' + esc(s.schedule.setting) +
+          '<p class="tenue piccolo">' + s.schedule.voci.length + ' target · ' + s.schedule.durataMin + ' min' +
+          (Sd.haScaletta(s) ? ' in ' + s.schedule.blocchi.length + ' blocchi' : '') + ' · ' + esc(s.schedule.setting) +
           (ultima ? ' · ultima seduta ' + U.giorniFa(ultima.inizio) : '') + '</p>' +
           '<div class="paziente-azioni">' +
             (aperta
@@ -122,8 +123,85 @@ BR.archivio.avvia().then(function (statoIniziale) {
       (!A.online(stato) ? '<div class="avviso">Offline: ogni tocco viene salvato sul telefono.</div>' : '') +
       '<div class="seduta-setting"><span class="tenue piccolo">Setting: <strong>' + esc(sess.setting || '–') + '</strong></span>' +
         '<button class="btn btn-piatto piccolo" type="button" data-azione="setting">Cambia</button></div>' +
-      '<div class="strumenti">' + voci(s).map(function (x) { return carta(sess, x.programma, x.target); }).join('') + '</div>';
+      (sess.scaletta ? sedutaConScaletta(s, sess)
+        : '<div class="strumenti">' + voci(s).map(function (x) { return carta(sess, x.programma, x.target); }).join('') + '</div>');
   }
+
+  // ---- Scaletta della seduta ---------------------------------------------------
+
+  var scalettaAperta = false;
+
+  // Il blocco in corso con il suo tempo, la scaletta completa a richiesta, poi
+  // i target di tutta la seduta e quelli del blocco.
+  function sedutaConScaletta(s, sess) {
+    var c = Sd.bloccoInCorso(sess);
+    var tuttiIds = voci(s).map(function (x) { return x.target.id; });
+    var vis = Sd.targetVisibili(sess, tuttiIds);
+    var carte = function (ids) {
+      return ids.map(function (id) { var x = A.trovaTarget(s, id); return x ? carta(sess, x.programma, x.target) : ''; }).join('');
+    };
+    return testaBlocco(sess, c) +
+      (scalettaAperta ? elencoScaletta(sess, c) : '') +
+      (c ? avvisoBlocco(sess, c) : '') +
+      (vis.continui.length ? '<h2 class="sezione">Per tutta la seduta</h2><div class="strumenti">' + carte(vis.continui) + '</div>' : '') +
+      (c && vis.blocco.length ? '<h2 class="sezione">' + esc(c.blocco.nome) + '</h2><div class="strumenti">' + carte(vis.blocco) + '</div>' : '');
+  }
+
+  function testaBlocco(sess, c) {
+    var n = sess.scaletta.length;
+    if (!c) {
+      return '<div class="blocco-corrente finito"><div><span class="etichetta">Scaletta completata</span>' +
+        '<p class="piccolo">Tutti i ' + n + ' blocchi sono stati svolti. Puoi terminare la seduta.</p></div>' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="scaletta-mostra" aria-expanded="' + scalettaAperta + '">' + (scalettaAperta ? 'Chiudi' : 'Scaletta') + '</button></div>';
+    }
+    var tipo = Sd.TIPI[c.blocco.tipo] || Sd.TIPI.attivita;
+    var durata = (+c.blocco.durataMin || 0) * 60000;
+    var trascorso = Date.now() - c.inizio;
+    var prossimo = sess.scaletta[c.indice + 1];
+    return '<div class="blocco-corrente ctx-bordo-' + tipo.contesto + (trascorso > durata ? ' oltre' : '') + '" data-live-blocco="' + c.blocco.id + '">' +
+      '<div class="blocco-riga"><span class="etichetta">Blocco ' + (c.indice + 1) + ' di ' + n + ' · ' + esc(tipo.breve) + '</span>' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="scaletta-mostra" aria-expanded="' + scalettaAperta + '">' + (scalettaAperta ? 'Chiudi' : 'Scaletta') + '</button></div>' +
+      '<div class="blocco-riga"><strong class="blocco-nome">' + esc(c.blocco.nome) + '</strong>' +
+        '<span class="dato blocco-tempo"><span data-live="blocco" data-inizio="' + c.inizio + '" data-durata="' + durata + '">' + U.mmss(trascorso) + '</span> / ' + U.mmss(durata) + '</span></div>' +
+      '<span class="barra-tempo"><span data-live="blocco-barra" data-inizio="' + c.inizio + '" data-durata="' + durata + '" style="width:' + Math.min(100, (trascorso / Math.max(durata, 1)) * 100) + '%"></span></span>' +
+      (c.blocco.nota ? '<p class="piccolo blocco-nota">' + esc(c.blocco.nota) + '</p>' : '') +
+      '<button class="btn btn-primario grande" type="button" data-azione="blocco-avanti">' + (prossimo ? 'Passa a: ' + esc(prossimo.nome) : 'Chiudi l’ultimo blocco') + '</button>' +
+    '</div>';
+  }
+
+  function elencoScaletta(sess, c) {
+    var svolti = {};
+    (sess.blocchiSvolti || []).forEach(function (x) { if (x.fine) svolti[x.bloccoId] = (svolti[x.bloccoId] || 0) + (x.fine - x.inizio); });
+    var orari = Sd.orari(sess.scaletta);
+    return '<ol class="scaletta-elenco">' + sess.scaletta.map(function (b, i) {
+      var tipo = Sd.TIPI[b.tipo] || Sd.TIPI.attivita;
+      var ora = c && c.blocco.id === b.id;
+      var fatto = svolti[b.id] != null;
+      return '<li class="ctx-bordo-' + tipo.contesto + (ora ? ' ora' : '') + (fatto ? ' fatto' : '') + '">' +
+        '<div><strong>' + esc(b.nome) + '</strong><span class="tenue piccolo">' + orari[i].inizio + '–' + orari[i].fine + ' min previsti' +
+          (fatto ? ' · svolto in ' + U.mmss(svolti[b.id]) : '') + '</span></div>' +
+        (ora ? '<span class="pillola penna">Adesso</span>' : '<button class="btn btn-piatto piccolo" type="button" data-azione="blocco-vai" data-blocco="' + b.id + '">' + (fatto ? 'Riprendi' : 'Vai') + '</button>') +
+      '</li>';
+    }).join('') + '</ol>';
+  }
+
+  // Cosa ricordare all'operatore nel blocco: le regole del probe, il ritardo
+  // del probe ritardato, le pause.
+  function avvisoBlocco(sess, c) {
+    var b = c.blocco;
+    if (b.tipo === 'probe' || b.tipo === 'probe_ritardato') {
+      var attesa = Sd.attesaRitardo(sess, b, Date.now());
+      return '<div class="avviso probe-avviso"><strong>Probe:</strong> presenta la richiesta una volta' + (b.prove > 1 ? ' per ' + b.prove + ' prove' : '') +
+        ', senza prompt e senza rinforzo differenziale. Segna corretta solo la risposta indipendente.' +
+        (attesa ? '<br><strong>Ritardo non ancora passato:</strong> mancano <span class="dato" data-live="timer-ritardo" data-scadenza="' + (Date.now() + attesa) + '">' + U.mmss(attesa) + '</span> ai ' + b.ritardoMin + ' minuti previsti dall’insegnamento.' : '') +
+        '</div>';
+    }
+    if (!(Sd.TIPI[b.tipo] || {}).prove) return '<p class="tenue piccolo blocco-descr">' + esc((Sd.TIPI[b.tipo] || Sd.TIPI.attivita).descrizione) + '</p>';
+    return '';
+  }
+
+  // Prove registrate nel blocco in corso (per i contatori delle prove).
+  function bloccoDi(sess) { return sess.scaletta ? Sd.bloccoInCorso(sess) : null; }
 
   function carta(sess, pr, t) {
     var tipo = M.TIPI[t.metodo.tipo];
@@ -439,10 +517,13 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function strProve(sess, t) {
-    var tutte = evValidi(sess, t).filter(function (e) { return e.tipo === 'prova'; });
+    // Con la scaletta, le prove contano nel blocco in corso.
+    var bl = bloccoDi(sess);
+    var probe = !!bl && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe';
+    var tutte = evValidi(sess, t).filter(function (e) { return e.tipo === 'prova' && (!bl || e.blocco === bl.blocco.id); });
     var ev = tutte.filter(function (e) { return !e.valore.mantenimento; });
     var facili = tutte.filter(function (e) { return e.valore.mantenimento; });
-    var tot = t.metodo.parametri.prove || 10;
+    var tot = (bl && bl.blocco.prove) || t.metodo.parametri.prove || 10;
     var indip = ev.filter(function (e) { return e.valore.prompt === 'I'; }).length;
     var conElementi = !!R.elementi(t);
     var proposta = conElementi ? provaProposta(sess, t) : null;
@@ -458,12 +539,20 @@ BR.archivio.avvia().then(function (statoIniziale) {
     for (var i = k; i < tot; i++) pallini += '<span class="pallino">' + (i + 1) + '</span>';
     var finite = ev.length >= tot;
     var facCorrette = facili.filter(function (e) { return e.valore.esito !== 'errore' && e.valore.prompt === 'I'; }).length;
-    return '<div class="prove">' +
+    var testa = '<div class="prove">' +
       '<div class="conteggio"><span class="dato numero">' + (ev.length ? Math.round((indip / ev.length) * 100) + '%' : '–') + '</span>' +
       '<span class="tenue piccolo">' + (finite ? 'prove completate' : 'prova ' + (ev.length + 1) + ' di ' + tot) + ' · indipendenti' +
+        (bl ? ' · in questo blocco' : '') +
         (facili.length ? ' · richieste facili ' + facCorrette + ' di ' + facili.length : '') + '</span></div>' +
       '<div class="pallini">' + pallini + '</div>' +
-      (conElementi ? boxElementi(sess, t, proposta) : '') +
+      (conElementi ? boxElementi(sess, t, proposta) : '');
+    // Nel probe niente prompt: la risposta è corretta (indipendente) o no.
+    if (probe) {
+      return testa + '<div class="probe-tasti">' +
+        '<button class="btn tasto-grande" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="I">Corretta</button>' +
+        '<button class="btn tasto-grande tasto-errore" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="errore">Errore o nessuna risposta</button></div></div>';
+    }
+    return testa +
       '<button class="btn tasto-grande" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="I">Corretta, indipendente</button>' +
       '<div class="livelli">' + M.PROMPT.slice(0, 5).reverse().map(function (l) {
         return '<button class="btn tasto-livello" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="' + l.id + '"><span class="dato">' + l.id + '</span><span class="piccolo">' + esc(l.nome) + '</span></button>';
@@ -663,6 +752,17 @@ BR.archivio.avvia().then(function (statoIniziale) {
         var resta = +el.getAttribute('data-scadenza') - ora;
         el.textContent = U.mmss(resta);
         if (resta <= 0) scaduto = true;
+      } else if (k === 'timer-ritardo') {
+        var manca = +el.getAttribute('data-scadenza') - ora;
+        el.textContent = U.mmss(Math.max(0, manca));
+        if (manca <= 0 && !el.hasAttribute('data-fatto')) { el.setAttribute('data-fatto', ''); vibra(80); }
+      } else if (k === 'blocco' || k === 'blocco-barra') {
+        var dentro = ora - +el.getAttribute('data-inizio'), dur = +el.getAttribute('data-durata');
+        if (k === 'blocco') el.textContent = U.mmss(dentro);
+        else el.style.width = Math.min(100, (dentro / Math.max(dur, 1)) * 100) + '%';
+        // Tempo del blocco finito: una vibrazione e il riquadro cambia colore.
+        var riquadro = el.closest('.blocco-corrente');
+        if (riquadro && dentro > dur && !riquadro.classList.contains('oltre')) { riquadro.classList.add('oltre'); vibra([200, 100, 200]); }
       } else if (k === 'durata' || k === 'tasso') {
         var x = A.trovaTarget(sog(), el.getAttribute('data-id'));
         if (!x) return;
@@ -832,6 +932,27 @@ BR.archivio.avvia().then(function (statoIniziale) {
         break;
       }
       case 'setting': cambiaSetting(); break;
+      case 'scaletta-mostra': scalettaAperta = !scalettaAperta; disegna(); break;
+      case 'blocco-avanti': {
+        var sa = sessione();
+        var nuovo = Sd.passaA(sa, null, Date.now());
+        salva();
+        vibra(30);
+        U.toast(nuovo ? 'Adesso: ' + nuovo.nome : 'Scaletta completata');
+        disegna();
+        window.scrollTo(0, 0);
+        break;
+      }
+      case 'blocco-vai': {
+        var sb = sessione();
+        var dest = Sd.passaA(sb, b.getAttribute('data-blocco'), Date.now());
+        scalettaAperta = false;
+        salva();
+        if (dest) U.toast('Adesso: ' + dest.nome);
+        disegna();
+        window.scrollTo(0, 0);
+        break;
+      }
       case 'occorrenza': registra('occorrenza', t); break;
       case 'inizio': registra('inizio', t); break;
       case 'fine': registra('fine', t); break;

@@ -433,3 +433,43 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .protocollo { display: grid; gap: 0.6rem; }
 .azioni-riga { white-space: nowrap; }
 .azioni-riga .btn + .btn { margin-left: 4px; }
+
+/* Scaletta della seduta */
+.schedule-colonna { display: grid; gap: 1.25rem; min-width: 0; }
+.scaletta-vuota { display: grid; gap: 0.7rem; padding: 1rem; border: 1px dashed var(--linea); border-radius: var(--r-piccolo); }
+.azioni-riga { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.aggiungi-blocco { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.aggiungi-blocco select { width: auto; }
+.scaletta-barra { display: flex; height: 34px; border-radius: var(--r-piccolo); overflow: hidden; gap: 2px; }
+.scaletta-barra span { flex-basis: 0; min-width: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.scaletta-legenda { margin-top: 0; }
+.scaletta-totale { font-size: 0.9rem; display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.scaletta-avvisi { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.88rem; }
+.scaletta-avvisi li { padding: 0.4rem 0.6rem; border-radius: var(--r-piccolo); }
+.scaletta-avvisi li.attenzione { background: var(--attenzione-tenue); color: var(--attenzione); }
+.scaletta-avvisi li.info { background: var(--superficie-2); }
+.continui .spunte, .blocco-corpo .spunte { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; }
+.continui .spunta, .blocco-corpo .spunta { font-weight: 400; }
+.blocchi { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.blocco { border: 1px solid var(--linea); border-radius: var(--r-piccolo); padding: 0.6rem 0.7rem; display: grid; gap: 0.5rem; }
+.blocco-testa { display: grid; grid-template-columns: 64px minmax(150px, 1fr) minmax(120px, 1.2fr) 92px auto; gap: 0.5rem; align-items: center; }
+.blocco-orario { color: var(--testo-2); font-size: 0.85rem; }
+.blocco-durata { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
+.blocco-durata input { width: 58px; }
+.blocco-descr { margin: 0; }
+.blocco-corpo { display: grid; gap: 0.5rem; }
+.campi-riga.stretti { grid-template-columns: repeat(auto-fit, minmax(150px, 220px)); }
+.blocco-nota { font-size: 0.88rem; }
+.tm-continui { gap: 2px; font-weight: 400; }
+.tm-continui span:not(.tm-strumento) { font-weight: 700; }
+.tm-blocco { border-left-width: 4px; }
+.svolti { margin-bottom: 0.6rem; }
+.svolti ol { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 3px; font-size: 0.88rem; }
+.svolti li { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.15rem 0.5rem; }
+.segmenti { display: inline-flex; background: var(--superficie-2); border-radius: 999px; padding: 3px; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.segmento { appearance: none; border: 0; background: transparent; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--testo-2); padding: 0.3rem 0.75rem; border-radius: 999px; cursor: pointer; }
+.segmento.sel { background: var(--superficie); color: var(--inchiostro); box-shadow: var(--ombra); }
+@media (max-width: 760px) {
+  .blocco-testa { grid-template-columns: 1fr 1fr; }
+  .blocco-testa .voce-azioni { grid-column: 1 / -1; }
+}
