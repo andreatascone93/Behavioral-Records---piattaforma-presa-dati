@@ -189,7 +189,9 @@
       { baseline: andamento(rnd, 3, 3, 1), intervento: andamento(rnd, 2.5, 0.8, 0.6) },
       { ruolo: 'valutazione' }));
     conPiano(p1aggr, 'fct', colpire, pausa, ['fuga', 'tangibile']);
-    // Nella fase FCT la conseguenza vale per entrambi i comportamenti problema.
+    // Assottigliamento: criterio più stretto e ritorno all'FCT continua se il problema risale.
+    p1aggr.piano.fasi[2].criteri[colpire.id] = { verso: 'al_massimo', soglia: 0.15, sessioni: 2 };
+    p1aggr.piano.fasi[2].ritorno = { targetId: colpire.id, verso: 'almeno', soglia: 0.4, sessioni: 2 };
     p1aggr.piano.fasi[1].antecedenti = [{ id: id('an'), tipo: 'alta_probabilita', richieste: 3, dettaglio: 'Tre richieste motorie facili prima di ogni compito al tavolo.' }];
     p1aggr._cambio = 6;
 
@@ -253,7 +255,7 @@
             { id: id('ct'), targetId: alzarsi.id, procedura: 'dri', schema: { tipo: 'FI', valore: 60 }, rinforzatore: lode, parametri: { alternativoId: attenzione.id, problema: 'estinzione' } },
             { id: id('ct'), targetId: alzarsi.id, procedura: 'estinzione', parametri: { variante: 'attenzione' } }
           ],
-          criteri: {}, uscita: 'Alzarsi al massimo nel 10% degli intervalli per 3 sessioni.'
+          criteri: {}, uscita: 'Alzarsi al massimo nel 10% degli intervalli per 3 sessioni.', stalloSessioni: 10
         },
         {
           id: id('pf'), tipo: 'assottigliamento', nome: 'Token ogni 3 minuti', descrizione: '', antecedenti: [],

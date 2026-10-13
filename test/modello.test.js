@@ -240,3 +240,20 @@ test('piano: token con i tre schemi', () => {
   const pr = { target: [{ id: 'a', nome: 'Attenzione', ruolo: 'abilita' }], piano: { fasi: [{ id: 'f', nome: 'Token', contingenze: [{ ...c, targetId: 'a', parametri: { tokenPerScambio: 5 } }] }] } };
   assert.match(piano.controlla(pr).map((a) => a.testo).join('\n'), /prezzo di ogni rinforzatore/);
 });
+
+test('piano: regole di ritorno e di stallo', () => {
+  const fase = { ritorno: { targetId: 'p', verso: 'almeno', soglia: 0.4, sessioni: 2 }, stalloSessioni: 4 };
+  assert.equal(piano.valutaRegole(fase, { p: [0.1, 0.5, 0.6] }, false).ritorno, true);
+  assert.equal(piano.valutaRegole(fase, { p: [0.5, 0.1, 0.6] }, false).ritorno, false);
+  assert.equal(piano.valutaRegole(fase, { p: [1, 1, 1, 1] }, false).stallo, true);
+  assert.equal(piano.valutaRegole(fase, { p: [1, 1, 1, 1] }, true).stallo, false);
+});
+
+test('archivio: la fase DRI di PZ-022 segnala lo stallo', () => {
+  const stato = datiFinti.genera('2026-10-13T12:00:00');
+  const pz = stato.config.soggetti[1];
+  const pr = pz.programmi.find((p) => p.nome === 'Autonomia al banco');
+  const r = archivio.regoleFase(stato, pz, pr, {});
+  assert.equal(r.stallo, true);
+  assert.equal(r.sessioni, 12);
+});

@@ -172,6 +172,21 @@
     return c;
   }
 
+  // Regole della fase in corso di un programma (ritorno, stallo), dalle serie
+  // di tutti i suoi target.
+  function regoleFase(stato, sog, programma, opzioni) {
+    var voce = voceCorrente(programma);
+    var valori = {};
+    var raggiunti = false;
+    programma.target.forEach(function (t) {
+      var punti = serie(stato, sog, programma, t, opzioni);
+      valori[t.id] = punti.filter(function (p) { return voce && p.faseId === voce.id; }).map(function (p) { return p.valore; });
+      var c = statoCriterio(programma, t, punti);
+      if (c && c.raggiunto) raggiunti = true;
+    });
+    return root.BR.piano.valutaRegole(root.BR.piano.faseInCorso(programma), valori, raggiunti);
+  }
+
   // ---- Rete e sincronizzazione simulata ------------------------------------
 
   function online(stato) {
@@ -250,7 +265,7 @@
     soggetto: soggetto, operatore: operatore, targetDi: targetDi, trovaTarget: trovaTarget,
     faseDiSessione: faseDiSessione, faseCorrente: faseCorrente, voceDiSessione: voceDiSessione,
     voceCorrente: voceCorrente, nomeFaseCorrente: nomeFaseCorrente, criterioCorrente: criterioCorrente,
-    sessioniDi: sessioniDi, eventiDi: eventiDi, serie: serie, statoCriterio: statoCriterio,
+    sessioniDi: sessioniDi, eventiDi: eventiDi, serie: serie, statoCriterio: statoCriterio, regoleFase: regoleFase,
     online: online, inAttesa: inAttesa, sincronizza: sincronizza,
     apriSessione: apriSessione, registra: registra, annullaUltimo: annullaUltimo, chiudiSessione: chiudiSessione
   };

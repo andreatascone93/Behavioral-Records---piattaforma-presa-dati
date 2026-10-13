@@ -348,6 +348,44 @@
     return fasi[i + 1] || null;
   }
 
+  // La fase pianificata prima di quella in corso: dove si torna se i dati
+  // peggiorano (regola di ritorno, Greer et al., 2016).
+  function fasePrecedente(programma) {
+    var fasi = programma.piano && programma.piano.fasi ? programma.piano.fasi : [];
+    var corrente = faseInCorso(programma);
+    var i = corrente ? fasi.indexOf(corrente) : -1;
+    return i > 0 ? fasi[i - 1] : null;
+  }
+
+  /*
+   * Regole decisionali della fase in corso, dai valori per sessione di ogni
+   * target nella fase (valoriPerTarget: { targetId: [valori] }).
+   *   ritorno: { targetId, soglia, verso, sessioni } → se vale, si torna alla
+   *            fase precedente;
+   *   stalloSessioni: n → dopo n sessioni senza nessun criterio raggiunto si
+   *            rivede il programma.
+   * Restituisce { ritorno: bool, stallo: bool, sessioni: n }.
+   */
+  function valutaRegole(fase, valoriPerTarget, criteriRaggiunti) {
+    var out = { ritorno: false, stallo: false, sessioni: 0 };
+    if (!fase) return out;
+    Object.keys(valoriPerTarget).forEach(function (k) { out.sessioni = Math.max(out.sessioni, valoriPerTarget[k].length); });
+    var r = fase.ritorno;
+    if (r && r.targetId && valoriPerTarget[r.targetId]) {
+      var M = root.BR && root.BR.modello ? root.BR.modello : require('./modello.js');
+      out.ritorno = !!M.verificaCriterio(r, valoriPerTarget[r.targetId]).raggiunto;
+    }
+    if (fase.stalloSessioni && out.sessioni >= fase.stalloSessioni && !criteriRaggiunti) out.stallo = true;
+    return out;
+  }
+
+  function descriviRitorno(r, targets) {
+    if (!r || !r.targetId) return '';
+    var t = targets && targets[r.targetId];
+    return 'Torna alla fase precedente se “' + (t ? t.nome : '?') + '” è ' + (r.verso === 'al_massimo' ? 'al massimo ' : 'almeno ') +
+      num(r.soglia) + ' per ' + r.sessioni + (r.sessioni === 1 ? ' sessione' : ' sessioni consecutive');
+  }
+
   function faseInCorso(programma) {
     var storia = programma.fasi || [];
     var corrente = storia.length ? storia[storia.length - 1] : null;
@@ -560,6 +598,7 @@
     descriviAntecedente: descriviAntecedente, leggiPrezzi: leggiPrezzi, scriviPrezzi: scriviPrezzi, schemiConcorrenti: schemiConcorrenti,
     obiettivo: obiettivo, fasePianificata: fasePianificata, nomeFase: nomeFase,
     prossimaFase: prossimaFase, faseInCorso: faseInCorso, criterioPerFase: criterioPerFase,
+    fasePrecedente: fasePrecedente, valutaRegole: valutaRegole, descriviRitorno: descriviRitorno,
     controlla: controlla
   };
 

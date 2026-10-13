@@ -129,8 +129,21 @@
           }).join('') + '</ul>'
             : '<p class="tenue piccolo">' + (f.tipo === 'baseline' ? 'Conseguenze abituali, nessuna procedura nuova.' : 'Nessuna') + '</p>') + '</div>' +
       '</div>' +
-      (f.uscita ? '<p class="piccolo uscita"><strong>Per passare alla fase successiva:</strong> ' + esc(f.uscita) + '</p>' : '') +
+      regoleFase(f, tm) +
     '</li>';
+  }
+
+  // Criteri della fase, regola di ritorno e regola di stallo.
+  function regoleFase(f, tm) {
+    var righe = [];
+    if (f.uscita) righe.push('<strong>Per passare alla fase successiva:</strong> ' + esc(f.uscita));
+    Object.keys(f.criteri || {}).forEach(function (id) {
+      var t = tm[id];
+      if (t && f.criteri[id]) righe.push('<strong>Criterio in questa fase per “' + esc(t.nome) + '”:</strong> ' + esc(M.descriviCriterio(f.criteri[id], t.metodo.tipo)));
+    });
+    if (f.ritorno && f.ritorno.targetId) righe.push('<strong>Ritorno:</strong> ' + esc(P.descriviRitorno(f.ritorno, tm)));
+    if (f.stalloSessioni) righe.push('<strong>Nessun progresso:</strong> dopo ' + f.stalloSessioni + ' sessioni senza criteri raggiunti si rivede il programma');
+    return righe.length ? '<div class="piccolo uscita">' + righe.map(function (x) { return '<p>' + x + '</p>'; }).join('') + '</div>' : '';
   }
 
   // ---- Campi dei moduli -------------------------------------------------------
@@ -306,6 +319,34 @@
 
   // ---- Finestre ----------------------------------------------------------------
 
+  function campiCriteriFase(pr, bozza) {
+    var criteri = bozza.criteri || {};
+    return pr.target.filter(function (t) { return t.ruolo !== 'valutazione'; }).map(function (t) {
+      var c = criteri[t.id];
+      var unita = M.TIPI[t.metodo.tipo].unita;
+      return '<div class="riga-criterio" data-criterio="' + t.id + '">' +
+        '<label class="spunta piccolo"><input type="checkbox" data-c-usa' + (c ? ' checked' : '') + '> Criterio proprio per “' + esc(t.nome) + '”</label>' +
+        '<div class="campi-riga">' +
+          '<div class="campo"><label>Valore</label><select data-c-verso><option value="almeno"' + (c && c.verso === 'almeno' ? ' selected' : '') + '>almeno</option><option value="al_massimo"' + ((c ? c.verso === 'al_massimo' : t.direzione === 'ridurre') ? ' selected' : '') + '>al massimo</option></select></div>' +
+          '<div class="campo"><label>Soglia (' + esc(unita) + ')</label><input data-c-soglia type="number" step="any" min="0" value="' + (c ? c.soglia : (t.metodo.criterio ? t.metodo.criterio.soglia : '')) + '"></div>' +
+          '<div class="campo"><label>Sessioni</label><input data-c-sessioni type="number" min="1" max="10" value="' + (c ? c.sessioni : 2) + '"></div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function leggiCriteriFase(form) {
+    var out = {};
+    form.querySelectorAll('[data-criterio]').forEach(function (el) {
+      if (!el.querySelector('[data-c-usa]').checked) return;
+      out[el.getAttribute('data-criterio')] = {
+        verso: el.querySelector('[data-c-verso]').value,
+        soglia: +el.querySelector('[data-c-soglia]').value || 0,
+        sessioni: +el.querySelector('[data-c-sessioni]').value || 2
+      };
+    });
+    return out;
+  }
+
   function modificaFase(ctx, pr, faseEsistente) {
     var nuova = !faseEsistente;
     var bozza = nuova
@@ -324,6 +365,20 @@
       '<fieldset><legend>Conseguenze programmate</legend><p class="aiuto piccolo">Una riga per procedura. Per rinforzo differenziale con estinzione aggiungi anche la riga di estinzione sul comportamento problema.</p><div id="fp-contingenze"></div>' +
         '<button class="btn btn-piatto" type="button" data-aggiungi="contingenze">+ Aggiungi conseguenza</button></fieldset>' +
       '<div class="campo"><label for="fp-uscita">Criterio per passare alla fase successiva</label><input id="fp-uscita" type="text" value="' + esc(bozza.uscita || '') + '" placeholder="Es. problema sotto 0,2 al minuto per 3 sessioni"></div>' +
+      '<fieldset><legend>Regole decisionali</legend>' +
+        '<p class="aiuto piccolo">Criteri propri di questa fase (sostituiscono il criterio di padronanza del target finché la fase è in corso), regola di ritorno allo step precedente e regola di stallo.</p>' +
+        campiCriteriFase(pr, bozza) +
+        '<div class="sottogruppo"><span class="etichetta">Ritorno alla fase precedente</span><div class="campi-riga">' +
+          '<div class="campo largo"><label for="fp-r-target">Se il target</label><select id="fp-r-target"><option value="">Nessuna regola</option>' +
+            pr.target.filter(function (t) { return t.ruolo !== 'valutazione'; }).map(function (t) {
+              return '<option value="' + t.id + '"' + (bozza.ritorno && bozza.ritorno.targetId === t.id ? ' selected' : '') + '>' + esc(t.nome) + '</option>';
+            }).join('') + '</select></div>' +
+          '<div class="campo"><label for="fp-r-verso">è</label><select id="fp-r-verso"><option value="almeno"' + (bozza.ritorno && bozza.ritorno.verso === 'almeno' ? ' selected' : '') + '>almeno</option><option value="al_massimo"' + (bozza.ritorno && bozza.ritorno.verso === 'al_massimo' ? ' selected' : '') + '>al massimo</option></select></div>' +
+          '<div class="campo"><label for="fp-r-soglia">Soglia</label><input id="fp-r-soglia" type="number" step="any" min="0" value="' + (bozza.ritorno ? bozza.ritorno.soglia : '') + '"></div>' +
+          '<div class="campo"><label for="fp-r-sessioni">Per sessioni</label><input id="fp-r-sessioni" type="number" min="1" max="10" value="' + (bozza.ritorno ? bozza.ritorno.sessioni : 2) + '"></div>' +
+        '</div></div>' +
+        '<div class="campo"><label for="fp-stallo">Rivedi il programma dopo quante sessioni senza criteri raggiunti</label><input id="fp-stallo" type="number" min="0" max="60" value="' + (bozza.stalloSessioni || '') + '" placeholder="Es. 10; vuoto per nessuna regola"></div>' +
+      '</fieldset>' +
       (st.tipo !== 'prevista' ? '<p class="tenue piccolo">Questa fase è già ' + (st.tipo === 'corrente' ? 'in corso' : 'stata svolta') + ': le modifiche valgono da ora in avanti.</p>' : '') +
     '</div>';
 
@@ -412,6 +467,10 @@
       bozza.tipo = f.querySelector('#fp-tipo').value;
       bozza.descrizione = f.querySelector('#fp-descrizione').value.trim();
       bozza.uscita = f.querySelector('#fp-uscita').value.trim();
+      bozza.criteri = leggiCriteriFase(f);
+      var rt = f.querySelector('#fp-r-target').value;
+      bozza.ritorno = rt ? { targetId: rt, verso: f.querySelector('#fp-r-verso').value, soglia: +f.querySelector('#fp-r-soglia').value || 0, sessioni: +f.querySelector('#fp-r-sessioni').value || 2 } : null;
+      bozza.stalloSessioni = +f.querySelector('#fp-stallo').value || null;
       bozza.contingenze = bozza.contingenze.filter(function (c) { return c.targetId && c.procedura; });
       if (nuova) pr.piano.fasi.push(bozza);
       else pr.piano.fasi[pr.piano.fasi.findIndex(function (x) { return x.id === bozza.id; })] = bozza;
