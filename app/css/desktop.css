@@ -452,13 +452,19 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .continui .spunta, .blocco-corpo .spunta { font-weight: 400; }
 .blocchi { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .blocco { border: 1px solid var(--linea); border-radius: var(--r-piccolo); padding: 0.6rem 0.7rem; display: grid; gap: 0.5rem; }
-.blocco-testa { display: grid; grid-template-columns: 64px minmax(150px, 1fr) minmax(120px, 1.2fr) 92px auto; gap: 0.5rem; align-items: center; }
+.blocco-testa { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto auto; gap: 0.5rem; align-items: center; }
+.blocco-testa .blocco-nome { font-weight: 700; }
+.blocco-tipo { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.blocco-tipo select { width: auto; max-width: 100%; }
+.blocco-tipo .blocco-descr { flex: 1 1 220px; }
+.blocco-numeri { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; font-size: 0.88rem; }
+.blocco-numeri label { display: inline-flex; align-items: center; gap: 0.4rem; }
+.blocco-numeri input { width: 76px; }
 .blocco-orario { color: var(--testo-2); font-size: 0.85rem; }
 .blocco-durata { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
 .blocco-durata input { width: 58px; }
 .blocco-descr { margin: 0; }
 .blocco-corpo { display: grid; gap: 0.5rem; }
-.campi-riga.stretti { grid-template-columns: repeat(auto-fit, minmax(150px, 220px)); }
 .blocco-nota { font-size: 0.88rem; }
 .tm-continui { gap: 2px; font-weight: 400; }
 .tm-continui span:not(.tm-strumento) { font-weight: 700; }
@@ -470,6 +476,6 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .segmento { appearance: none; border: 0; background: transparent; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--testo-2); padding: 0.3rem 0.75rem; border-radius: 999px; cursor: pointer; }
 .segmento.sel { background: var(--superficie); color: var(--inchiostro); box-shadow: var(--ombra); }
 @media (max-width: 760px) {
-  .blocco-testa { grid-template-columns: 1fr 1fr; }
+  .blocco-testa { grid-template-columns: 48px minmax(0, 1fr) auto; }
   .blocco-testa .voce-azioni { grid-column: 1 / -1; }
 }

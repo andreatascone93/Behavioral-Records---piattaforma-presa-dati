@@ -710,7 +710,11 @@
           var x = sess.blocchiSvolti.find(function (b) { return t >= b.inizio && t < b.fine; }) || sess.blocchiSvolti[sess.blocchiSvolti.length - 1];
           return sess.scaletta.find(function (b) { return b.id === x.bloccoId; });
         };
-        var segna = function (e, b) { e.blocco = b.id; e.contesto = Sd.TIPI[b.tipo].contesto; };
+        var segna = function (e, b) {
+          e.blocco = b.id;
+          e.contesto = e.tipo !== 'conseguenza' && b.targetIds.indexOf(e.targetId) !== -1 ? Sd.TIPI[b.tipo].contesto : 'nessuno';
+        };
+        var togli = [];
         mie.forEach(function (e) { if (e.tipo !== 'prova') segna(e, bloccoAlle(e.t)); });
         // Prove DTT: la prima nel probe, le altre nel primo blocco di insegnamento del target.
         var perTarget = {};
@@ -721,10 +725,14 @@
           var ins = sess.scaletta.find(function (b) { return b.tipo === 'insegnamento' && b.targetIds.indexOf(tid) !== -1; });
           // Gli orari restano quelli generati: le conseguenze segnate dipendono da loro.
           prove.forEach(function (e, i) {
-            if (i === 0 && probe && !e.valore.mantenimento) segna(e, probe);
-            else segna(e, ins || bloccoAlle(e.t));
+            if (i === 0 && probe && !e.valore.mantenimento) {
+              segna(e, probe);
+              // Nel probe niente rinforzo: via la conseguenza generata per questa prova.
+              mie.forEach(function (c) { if (c.tipo === 'conseguenza' && c.targetId === tid && c.t === e.t + 2000) togli.push(c); });
+            } else segna(e, ins || bloccoAlle(e.t));
           });
         });
+        togli.forEach(function (c) { eventi.splice(eventi.indexOf(c), 1); });
       });
     });
 

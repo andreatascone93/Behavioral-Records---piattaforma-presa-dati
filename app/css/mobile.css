@@ -322,7 +322,7 @@ body { font-size: 16px; }
 .scaletta-elenco { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
 .scaletta-elenco li { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .scaletta-elenco li > div { display: grid; }
-.scaletta-elenco li.fatto { opacity: 0.7; }
+.scaletta-elenco li.svolto { opacity: 0.7; }
 .scaletta-elenco li.ora { box-shadow: 0 0 0 2px var(--penna); }
 .probe-avviso { border-left: 4px solid var(--penna); }
 .probe-tasti { display: grid; gap: 8px; }

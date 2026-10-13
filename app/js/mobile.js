@@ -132,7 +132,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   var scalettaAperta = false;
 
   // Il blocco in corso con il suo tempo, la scaletta completa a richiesta, poi
-  // i target di tutta la seduta e quelli del blocco.
+  // i target del blocco e quelli di tutta la seduta.
   function sedutaConScaletta(s, sess) {
     var c = Sd.bloccoInCorso(sess);
     var tuttiIds = voci(s).map(function (x) { return x.target.id; });
@@ -143,8 +143,9 @@ BR.archivio.avvia().then(function (statoIniziale) {
     return testaBlocco(sess, c) +
       (scalettaAperta ? elencoScaletta(sess, c) : '') +
       (c ? avvisoBlocco(sess, c) : '') +
-      (vis.continui.length ? '<h2 class="sezione">Per tutta la seduta</h2><div class="strumenti">' + carte(vis.continui) + '</div>' : '') +
-      (c && vis.blocco.length ? '<h2 class="sezione">' + esc(c.blocco.nome) + '</h2><div class="strumenti">' + carte(vis.blocco) + '</div>' : '');
+      // Prima i target del blocco (quelli su cui si sta lavorando), poi quelli di tutta la seduta.
+      (c && vis.blocco.length ? '<h2 class="sezione">' + esc(c.blocco.nome) + '</h2><div class="strumenti">' + carte(vis.blocco) + '</div>' : '') +
+      (vis.continui.length ? '<h2 class="sezione">Per tutta la seduta</h2><div class="strumenti">' + carte(vis.continui) + '</div>' : '');
   }
 
   function testaBlocco(sess, c) {
@@ -177,7 +178,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       var tipo = Sd.TIPI[b.tipo] || Sd.TIPI.attivita;
       var ora = c && c.blocco.id === b.id;
       var fatto = svolti[b.id] != null;
-      return '<li class="ctx-bordo-' + tipo.contesto + (ora ? ' ora' : '') + (fatto ? ' fatto' : '') + '">' +
+      return '<li class="ctx-bordo-' + tipo.contesto + (ora ? ' ora' : '') + (fatto ? ' svolto' : '') + '">' +
         '<div><strong>' + esc(b.nome) + '</strong><span class="tenue piccolo">' + orari[i].inizio + '–' + orari[i].fine + ' min previsti' +
           (fatto ? ' · svolto in ' + U.mmss(svolti[b.id]) : '') + '</span></div>' +
         (ora ? '<span class="pillola penna">Adesso</span>' : '<button class="btn btn-piatto piccolo" type="button" data-azione="blocco-vai" data-blocco="' + b.id + '">' + (fatto ? 'Riprendi' : 'Vai') + '</button>') +
@@ -236,7 +237,10 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function promemoria(sess, pr, t) {
-    return pianoCrisi(pr, t) + conseguenze(sess, pr, t);
+    // Nel probe i target del blocco non ricevono rinforzo differenziale.
+    var bl = bloccoDi(sess);
+    var inProbe = bl && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1;
+    return pianoCrisi(pr, t) + (inProbe ? '' : conseguenze(sess, pr, t));
   }
 
   // Per i comportamenti da ridurre, il piano di crisi a portata di mano.

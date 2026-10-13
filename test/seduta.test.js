@@ -11,9 +11,9 @@ const assert = require('node:assert/strict');
 
 const M = require('../app/js/modello.js');
 require('../app/js/piano.js');
-require('../app/js/fedelta.js');
 require('../app/js/repertorio.js');
 const Sd = require('../app/js/seduta.js');
+const F = require('../app/js/fedelta.js');
 const datiFinti = require('../app/js/dati-finti.js');
 const archivio = require('../app/js/archivio.js');
 
@@ -112,6 +112,10 @@ test('seduta sul telefono: si parte dal primo blocco, si avanza, gli eventi port
   assert.equal(probe.tipo, 'probe');
   assert.deepEqual(Sd.targetVisibili(sess, ['tp', 'ta', 'tb']).blocco, ['ta', 'tb']);
   archivio.registra(stato, sess, ta, 'prova', { esito: 'errore', prompt: null });
+  // Il problema durante il probe non è un dato "di probe".
+  const colpo = archivio.registra(stato, sess, tp, 'occorrenza');
+  assert.equal(colpo.contesto, 'nessuno');
+  assert.equal(stato.eventi[stato.eventi.length - 2].contesto, 'probe');
 
   const ins = Sd.passaA(sess, null, Date.now());
   assert.equal(ins.tipo, 'insegnamento');
@@ -195,4 +199,16 @@ test('dati finti: ogni paziente ha una scaletta valida e le ultime sedute hanno 
   // Le sedute con la scaletta conservano i blocchi svolti.
   const conScalettaSvolta = stato.sessioni.filter((x) => x.blocchiSvolti && x.blocchiSvolti.length);
   assert.equal(conScalettaSvolta.length, 6 * stato.config.soggetti.length);
+});
+
+test('fedeltà: le risposte nei probe non sono occasioni di rinforzo', () => {
+  const S = Date.UTC(2026, 9, 12, 9, 0, 0);
+  const t = { id: 'ta', nome: 'Tact', metodo: metodo('dtt') };
+  const c = { id: 'c1', targetId: 'ta', procedura: 'rinforzo_positivo', schema: { tipo: 'CRF' } };
+  const prova = (id, sec, contesto) => ({ id, tipo: 'prova', t: S + sec * 1000, targetId: 'ta', contesto, valore: { esito: 'corretta', prompt: 'I' } });
+  const data = (id, sec) => ({ id, tipo: 'conseguenza', t: S + sec * 1000, targetId: 'ta', valore: { contingenzaId: 'c1', azione: 'data' } });
+  const eventi = [prova('p1', 10, 'probe'), prova('p2', 60, 'insegnamento'), data('d2', 61), prova('p3', 90, 'insegnamento'), data('d3', 91)];
+  const r = F.seduta({ contingenze: [c] }, [t], eventi, { inizio: S, fine: S + 600000 });
+  assert.equal(r.percentuale, 100);
+  assert.equal(r.opportunita, 2);
 });

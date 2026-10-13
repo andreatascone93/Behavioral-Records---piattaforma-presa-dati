@@ -352,11 +352,15 @@
     return Math.max(0, fine + blocco.ritardoMin * 60000 - ora);
   }
 
-  // Contesto e blocco da scrivere sugli eventi registrati adesso.
-  function etichettaEvento(sessione) {
+  // Contesto e blocco da scrivere sugli eventi registrati adesso. Il
+  // contesto del blocco (probe, insegnamento, baseline) vale solo per i suoi
+  // target: un comportamento di tutta la seduta resta "nessuno" anche se
+  // succede durante un probe.
+  function etichettaEvento(sessione, targetId) {
     var c = bloccoInCorso(sessione);
     if (!c) return null;
-    return { blocco: c.blocco.id, contesto: TIPI[c.blocco.tipo] ? TIPI[c.blocco.tipo].contesto : 'nessuno' };
+    var delBlocco = !targetId || c.blocco.targetIds.indexOf(targetId) !== -1;
+    return { blocco: c.blocco.id, contesto: delBlocco && TIPI[c.blocco.tipo] ? TIPI[c.blocco.tipo].contesto : 'nessuno' };
   }
 
   // ---- Dati per contesto ------------------------------------------------------

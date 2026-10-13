@@ -76,7 +76,7 @@
       '<div class="spunte">' + voci.map(function (x) {
         var dentro = lista.indexOf(x.target.id) !== -1;
         return '<label class="spunta piccolo"><input type="checkbox" data-continuo="' + x.target.id + '"' + (dentro ? ' checked' : '') + '> ' +
-          esc(x.target.nome) + ' <span class="tenue">(' + esc(M.TIPI[x.target.metodo.tipo].nome.toLowerCase()) + ')</span></label>';
+          esc(x.target.nome) + ' <span class="tenue">(' + esc(M.TIPI[x.target.metodo.tipo].nome) + ')</span></label>';
       }).join('') + '</div></fieldset>';
   }
 
@@ -94,10 +94,7 @@
     return '<li class="blocco ctx-bordo-' + tipo.contesto + '">' +
       '<div class="blocco-testa">' +
         '<span class="blocco-orario dato">' + orario.inizio + '–' + orario.fine + '′</span>' +
-        '<select aria-label="Tipo di blocco" data-campo-blocco="tipo"' + att + '>' + Object.keys(S.TIPI).map(function (k) {
-          return '<option value="' + k + '"' + (k === b.tipo ? ' selected' : '') + '>' + esc(S.TIPI[k].nome) + '</option>';
-        }).join('') + '</select>' +
-        '<input type="text" aria-label="Nome del blocco" value="' + esc(b.nome) + '" data-campo-blocco="nome"' + att + '>' +
+        '<input class="blocco-nome" type="text" aria-label="Nome del blocco" value="' + esc(b.nome) + '" data-campo-blocco="nome"' + att + '>' +
         '<label class="blocco-durata"><input type="number" min="1" max="240" value="' + b.durataMin + '" data-campo-blocco="durataMin"' + att + '> min</label>' +
         '<div class="voce-azioni">' +
           '<button class="btn btn-piatto" type="button" aria-label="Sposta su" data-azione="blocco-sposta" data-verso="-1"' + att + (i === 0 ? ' disabled' : '') + '>↑</button>' +
@@ -106,15 +103,18 @@
           '<button class="btn btn-piatto btn-pericolo" type="button" data-azione="blocco-togli"' + att + '>Togli</button>' +
         '</div>' +
       '</div>' +
-      '<p class="tenue piccolo blocco-descr">' + esc(tipo.descrizione) + '</p>' +
+      '<div class="blocco-tipo"><select aria-label="Tipo di blocco" data-campo-blocco="tipo"' + att + '>' + Object.keys(S.TIPI).map(function (k) {
+          return '<option value="' + k + '"' + (k === b.tipo ? ' selected' : '') + '>' + esc(S.TIPI[k].nome) + '</option>';
+        }).join('') + '</select>' +
+        '<p class="tenue piccolo blocco-descr">' + esc(tipo.descrizione) + '</p></div>' +
       (tipo.prove ? '<div class="blocco-corpo">' +
         '<div class="spunte">' + (candidati.length ? candidati.map(function (x) {
           var dentro = b.targetIds.indexOf(x.target.id) !== -1;
           return '<label class="spunta piccolo"><input type="checkbox" data-blocco-target="' + x.target.id + '"' + att + (dentro ? ' checked' : '') + '> ' + esc(x.target.nome) + '</label>';
         }).join('') : '<span class="tenue piccolo">Nessun target a prove discrete nella seduta.</span>') + '</div>' +
-        '<div class="campi-riga stretti">' +
-          '<div class="campo"><label for="pv-' + b.id + '">Prove per target</label><input id="pv-' + b.id + '" type="number" min="1" max="100" placeholder="come da metodo" value="' + (b.prove || '') + '" data-campo-blocco="prove"' + att + '></div>' +
-          (b.tipo === 'probe_ritardato' ? '<div class="campo"><label for="rt-' + b.id + '">Ritardo minimo dall’insegnamento (min)</label><input id="rt-' + b.id + '" type="number" min="0" max="1440" value="' + (b.ritardoMin || 0) + '" data-campo-blocco="ritardoMin"' + att + '></div>' : '') +
+        '<div class="blocco-numeri">' +
+          '<label>Prove per target <input type="number" min="1" max="100" placeholder="metodo" value="' + (b.prove || '') + '" data-campo-blocco="prove"' + att + '></label>' +
+          (b.tipo === 'probe_ritardato' ? '<label>Ritardo minimo dall’insegnamento <input type="number" min="0" max="1440" value="' + (b.ritardoMin || 0) + '" data-campo-blocco="ritardoMin"' + att + '> min</label>' : '') +
         '</div></div>' : '') +
       '<input class="blocco-nota" type="text" placeholder="Nota per l’operatore (materiali, rinforzatori, istruzioni)" aria-label="Nota per l’operatore" value="' + esc(b.nota || '') + '" data-campo-blocco="nota"' + att + '>' +
     '</li>';

@@ -356,7 +356,7 @@
       operatoreId: sessione.operatoreId, sincronizzato: false
     };
     // Il blocco della scaletta in corso: separa i probe dall'insegnamento.
-    var blocco = Sd.etichettaEvento(sessione);
+    var blocco = Sd.etichettaEvento(sessione, target.id);
     if (blocco) { e.blocco = blocco.blocco; e.contesto = blocco.contesto; }
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     stato.eventi.push(e);
