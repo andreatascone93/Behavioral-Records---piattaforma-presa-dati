@@ -67,6 +67,7 @@
   var RACCOLTE = {
     soggetto: function (stato) { return stato.config.soggetti; },
     operatore: function (stato) { return stato.config.operatori; },
+    protocollo: function (stato) { return stato.config.protocolli || (stato.config.protocolli = []); },
     sessione: function (stato) { return stato.sessioni; }
   };
 

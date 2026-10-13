@@ -595,6 +595,98 @@
       }
     }
 
+    // Elenco di tact con obiettivo numerico (tipo VB-MAPP) per PZ-014, con
+    // richieste facili alternate alle prove di training. Si aggiunge in fondo,
+    // con un generatore a parte, così gli altri dati finti non cambiano.
+    (function () {
+      var rndT = mulberry32(7102026);
+      var sog = soggetti[0];
+      var sue = sessioni.filter(function (x) { return x.soggettoId === sog.id; });
+      var giornoDi = function (k) { return dataISO(new Date(sue[k].inizio)); };
+      sog.repertorio = [
+        ['animali', 'cane'], ['animali', 'gatto'], ['cibi', 'acqua'], ['cibi', 'pane'], ['cibi', 'biscotto'],
+        ['persone', 'mamma'], ['persone', 'papà'], ['giochi', 'palla'], ['giochi', 'macchina']
+      ].map(function (x) { return { id: id('rp'), testo: x[1], operante: 'tact', categoria: x[0], data: giorniPrima(70), nota: 'Valutazione iniziale' }; });
+      var voce = function (categoria, testo) { return { id: id('el'), testo: testo, categoria: categoria, stato: 'coda', inizio: null, acquisito: null }; };
+      var voci = [
+        voce('animali', 'mucca'), voce('cibi', 'mela'), voce('vestiti', 'scarpa'),
+        voce('animali', 'cavallo'), voce('cibi', 'banana'), voce('vestiti', 'cappello'),
+        voce('animali', 'pecora'), voce('oggetti di casa', 'forchetta'), voce('vestiti', 'maglia'),
+        voce('animali', 'gallina'), voce('cibi', 'uva'), voce('vestiti', 'pantaloni'),
+        voce('oggetti di casa', 'cucchiaio'), voce('oggetti di casa', 'bicchiere'), voce('giochi', 'treno')
+      ];
+      // Gruppi di tre: insegnati tra le sedute indicate, acquisiti all'ultima.
+      var gruppi = [{ da: 3, a: 8, voci: voci.slice(0, 3) }, { da: 9, a: 13, voci: voci.slice(3, 6) }, { da: 14, a: null, voci: voci.slice(6, 9) }];
+      gruppi.forEach(function (g) {
+        g.voci.forEach(function (v) {
+          v.stato = g.a == null ? 'insegnamento' : 'acquisito';
+          v.inizio = giornoDi(g.da);
+          if (g.a != null) v.acquisito = giornoDi(g.a);
+        });
+      });
+      var tact = target('Tact di oggetti comuni', 'aumentare', 'dtt', { prove: 10 }, crit(90, 'almeno'), {
+        include: 'Dice il nome dell’oggetto o dell’immagine entro 5 secondi da “Cos’è?”, senza aiuti, per ciascuna risposta dell’elenco.',
+        esclude: 'Risposta dopo un modello vocale o oltre i 5 secondi; parole approssimate non concordate.',
+        esempi: '“Mucca” davanti all’immagine della mucca.'
+      }, null, {
+        obiettivo: { condizione: 'al tavolo, con immagini e oggetti reali, con l’istruzione “Cos’è?”' },
+        insegnamento: insegnamento('dtt', '“Cos’è?” mostrando l’oggetto o l’immagine', 'Oggetti reali e immagini', 'ritardo_progressivo', 2, 'modello_ripeti'),
+        generalizzazione: generalizzazione(['Giulia R.', 'Andrea', 'Genitori'], ['Studio', 'Casa'], ['Immagini diverse dello stesso oggetto', 'Oggetti reali']),
+        elementi: { attivo: true, operante: 'tact', obiettivo: 25, conta: 'repertorio', inContemporanea: 3, alternanza: { attiva: true, ogni: 1 }, voci: voci },
+        protocollo: { manuale: 'vbmapp', nomeManuale: 'VB-MAPP', codice: 'Tact 6' }
+      });
+      var pr = { id: id('pr'), nome: 'Tact', area: 'insegnare', stato: 'attivo', fasi: [], target: [tact] };
+      conPiano(pr, 'acquisizione', null, tact);
+      pr.fasi = [
+        { id: id('fa'), tipo: 'baseline', inizio: giornoDi(0), nota: 'Sondaggio delle prime risposte', pianoId: pr.piano.fasi[0].id },
+        { id: id('fa'), tipo: pr.piano.fasi[1].tipo, inizio: giornoDi(3), nota: 'Avvio del training', pianoId: pr.piano.fasi[1].id }
+      ];
+      sog.programmi.push(pr);
+      sog.schedule.voci.push({ targetId: tact.id });
+
+      // Probabilità di risposta indipendente di una voce nella seduta k.
+      function probabilita(v, k) {
+        var g = gruppi.find(function (x) { return x.voci.indexOf(v) !== -1; });
+        if (k < g.da) return 0.15;
+        if (v.testo === 'pecora') return 1;
+        if (v.testo === 'forchetta') return 0.5 + 0.1 * (k - g.da);
+        if (v.testo === 'maglia') return 0.25;
+        var fine = g.a, n = Math.max(fine - g.da, 1);
+        return Math.min(0.35 + 0.75 * (k - g.da) / n, 1);
+      }
+      function esito(p) {
+        var x = rndT();
+        if (x < p) return { esito: 'corretta', prompt: 'I' };
+        return rndT() < 0.6 ? { esito: 'corretta', prompt: ['V', 'G', 'M'][Math.floor(rndT() * 3)] } : { esito: 'errore', prompt: null };
+      }
+
+      sue.forEach(function (sess, k) {
+        var inIntervento = k >= 3;
+        var voceFase = pr.fasi[inIntervento ? 1 : 0];
+        sess.fasi[pr.id] = voceFase.tipo;
+        sess.fasiId[pr.id] = voceFase.id;
+        sess.versioniMetodi[tact.metodo.id] = 1;
+        var gruppo = inIntervento ? gruppi.find(function (g) { return k >= g.da && (g.a == null || k <= g.a); }) : gruppi[0];
+        // Risposte già acquisite a questa seduta: richieste facili.
+        var facili = sog.repertorio.map(function (r) { return { id: r.id, testo: r.testo }; });
+        gruppi.forEach(function (g) { if (g.a != null && k > g.a) g.voci.forEach(function (v) { facili.push({ id: v.id, testo: v.testo }); }); });
+        var S = sess.inizio + 12 * 60000;
+        var n = 0, da = eventi.length;
+        for (var i = 0; i < 10; i++) {
+          var v = gruppo.voci[i % 3];
+          var e = esito(probabilita(v, k));
+          e.elemento = v.id; e.elementoTesto = v.testo;
+          eventi.push(evento(tact, sess, 'prova', S + n++ * 30000, e));
+          if (!inIntervento) continue;
+          var f = facili[(k * 7 + i) % facili.length];
+          var em = f.testo === 'gatto' && k >= sue.length - 5 && rndT() < 0.6 ? { esito: 'errore', prompt: null } : { esito: 'corretta', prompt: rndT() < 0.95 ? 'I' : 'V' };
+          em.elemento = f.id; em.elementoTesto = f.testo; em.mantenimento = true;
+          eventi.push(evento(tact, sess, 'prova', S + n++ * 30000, em));
+        }
+        if (inIntervento) generaConseguenze(pr.piano.fasi[1], sess, eventi.slice(da), function (x) { eventi.push(x); });
+      });
+    })();
+
     // Pulizia dei campi usati solo per generare.
     soggetti.forEach(function (s) {
       s.programmi.forEach(function (pr) {

@@ -6,7 +6,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui, F = BR.fedelta;
+  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui, F = BR.fedelta, R = BR.repertorio;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -398,21 +398,72 @@ BR.archivio.avvia().then(function (statoIniziale) {
       '</div>';
   }
 
+  // Risposta scelta a mano dall'operatore per la prossima prova, per target.
+  var scelte = {};
+
+  // Con gli elementi: la risposta da presentare ora, proposta dall'app
+  // (alternanza tra training e richieste facili) o scelta a mano.
+  function provaProposta(sess, t) {
+    var s = sog();
+    var scelta = scelte[t.id];
+    if (scelta) {
+      var lista = scelta.tipo === 'mantenimento' ? R.richiesteFacili(s, t) : R.inInsegnamento(R.elementi(t));
+      var el = lista.find(function (x) { return x.id === scelta.id; });
+      if (el) return { tipo: scelta.tipo, elemento: el, aMano: true };
+    }
+    return R.prossimaProva(s, t, evValidi(sess, t));
+  }
+
+  function boxElementi(sess, t, proposta) {
+    var el = R.elementi(t);
+    var training = R.inInsegnamento(el);
+    var facili = R.richiesteFacili(sog(), t);
+    if (!training.length && !facili.length) {
+      return '<p class="avviso-elementi piccolo">Nessuna risposta in insegnamento: aggiungile dal desktop (Programmi e target, Elementi).</p>';
+    }
+    var corrente = proposta && proposta.elemento;
+    var mant = proposta && proposta.tipo === 'mantenimento';
+    var facileSel = corrente && mant;
+    return '<div class="elementi-seduta">' +
+      (corrente
+        ? '<div class="prossima ' + (mant ? 'facile' : 'training') + '"><span class="etichetta">' + (mant ? 'Richiesta facile · già acquisita' : 'Prova di training') + (proposta.aMano ? ' · scelta a mano' : '') + '</span>' +
+          '<strong class="prossima-testo">' + esc(corrente.testo) + '</strong>' + (corrente.categoria ? '<span class="tenue piccolo">' + esc(corrente.categoria) + '</span>' : '') + '</div>'
+        : '') +
+      '<div class="scelta-elementi" role="group" aria-label="Scegli la risposta da presentare">' +
+        training.map(function (x) {
+          var sel = corrente && !mant && corrente.id === x.id;
+          return '<button type="button" class="chip' + (sel ? ' sel' : '') + '" aria-pressed="' + !!sel + '" data-azione="scegli-elemento" data-id="' + t.id + '" data-tipo="training" data-elemento="' + x.id + '">' + esc(x.testo) + '</button>';
+        }).join('') +
+        (facili.length ? '<button type="button" class="chip facile' + (facileSel ? ' sel' : '') + '" aria-pressed="' + !!facileSel + '" data-azione="scegli-elemento" data-id="' + t.id + '" data-tipo="mantenimento">Richiesta facile</button>' : '') +
+      '</div></div>';
+  }
+
   function strProve(sess, t) {
-    var ev = evValidi(sess, t).filter(function (e) { return e.tipo === 'prova'; });
+    var tutte = evValidi(sess, t).filter(function (e) { return e.tipo === 'prova'; });
+    var ev = tutte.filter(function (e) { return !e.valore.mantenimento; });
+    var facili = tutte.filter(function (e) { return e.valore.mantenimento; });
     var tot = t.metodo.parametri.prove || 10;
     var indip = ev.filter(function (e) { return e.valore.prompt === 'I'; }).length;
+    var conElementi = !!R.elementi(t);
+    var proposta = conElementi ? provaProposta(sess, t) : null;
     var pallini = '';
-    for (var i = 0; i < Math.max(tot, ev.length); i++) {
-      var e = ev[i];
-      var cl = !e ? '' : e.valore.esito === 'errore' ? 'errore' : e.valore.prompt === 'I' ? 'indip' : 'aiuto';
-      pallini += '<span class="pallino ' + cl + '">' + (e ? (e.valore.esito === 'errore' ? '×' : e.valore.prompt) : i + 1) + '</span>';
-    }
+    var k = 0;
+    // I pallini delle richieste facili sono più piccoli e non contano nel totale.
+    tutte.forEach(function (e) {
+      var cl = e.valore.esito === 'errore' ? 'errore' : e.valore.prompt === 'I' ? 'indip' : 'aiuto';
+      var titolo = e.valore.elementoTesto ? ' title="' + esc(e.valore.elementoTesto) + '"' : '';
+      if (e.valore.mantenimento) pallini += '<span class="pallino facile ' + cl + '"' + titolo + '>' + (e.valore.esito === 'errore' ? '×' : 'F') + '</span>';
+      else { k++; pallini += '<span class="pallino ' + cl + '"' + titolo + '>' + (e.valore.esito === 'errore' ? '×' : e.valore.prompt) + '</span>'; }
+    });
+    for (var i = k; i < tot; i++) pallini += '<span class="pallino">' + (i + 1) + '</span>';
     var finite = ev.length >= tot;
+    var facCorrette = facili.filter(function (e) { return e.valore.esito !== 'errore' && e.valore.prompt === 'I'; }).length;
     return '<div class="prove">' +
       '<div class="conteggio"><span class="dato numero">' + (ev.length ? Math.round((indip / ev.length) * 100) + '%' : '–') + '</span>' +
-      '<span class="tenue piccolo">' + (finite ? 'prove completate' : 'prova ' + (ev.length + 1) + ' di ' + tot) + ' · indipendenti</span></div>' +
+      '<span class="tenue piccolo">' + (finite ? 'prove completate' : 'prova ' + (ev.length + 1) + ' di ' + tot) + ' · indipendenti' +
+        (facili.length ? ' · richieste facili ' + facCorrette + ' di ' + facili.length : '') + '</span></div>' +
       '<div class="pallini">' + pallini + '</div>' +
+      (conElementi ? boxElementi(sess, t, proposta) : '') +
       '<button class="btn tasto-grande" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="I">Corretta, indipendente</button>' +
       '<div class="livelli">' + M.PROMPT.slice(0, 5).reverse().map(function (l) {
         return '<button class="btn tasto-livello" type="button" data-azione="prova" data-id="' + t.id + '" data-prompt="' + l.id + '"><span class="dato">' + l.id + '</span><span class="piccolo">' + esc(l.nome) + '</span></button>';
@@ -792,7 +843,30 @@ BR.archivio.avvia().then(function (statoIniziale) {
         break;
       case 'prova': {
         var pr = b.getAttribute('data-prompt');
-        registra('prova', t, pr === 'errore' ? { esito: 'errore', prompt: null } : { esito: 'corretta', prompt: pr });
+        var vp = pr === 'errore' ? { esito: 'errore', prompt: null } : { esito: 'corretta', prompt: pr };
+        // Con gli elementi la prova porta la risposta presentata.
+        var prop = R.elementi(t) ? provaProposta(sessione(), t) : null;
+        if (prop && prop.elemento) {
+          vp.elemento = prop.elemento.id;
+          vp.elementoTesto = prop.elemento.testo;
+          if (prop.tipo === 'mantenimento') vp.mantenimento = true;
+        }
+        delete scelte[t.id];
+        registra('prova', t, vp);
+        break;
+      }
+      case 'scegli-elemento': {
+        var tipoScelta = b.getAttribute('data-tipo');
+        var idEl = b.getAttribute('data-elemento');
+        if (tipoScelta === 'mantenimento') {
+          // La richiesta facile la propone l'app, ruotando tra le acquisite.
+          var facili = R.richiesteFacili(sog(), t);
+          var gia = scelte[t.id] && scelte[t.id].tipo === 'mantenimento' ? scelte[t.id].id : null;
+          var j = gia ? (facili.findIndex(function (x) { return x.id === gia; }) + 1) % facili.length : Math.floor(Math.random() * facili.length);
+          idEl = facili.length ? facili[j].id : null;
+        }
+        if (idEl) scelte[t.id] = { tipo: tipoScelta, id: idEl };
+        disegna();
         break;
       }
       case 'passo':

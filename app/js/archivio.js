@@ -16,7 +16,13 @@
   var canale = null;
   var ascoltatori = [];
 
-  function valido(s) { return s && s.versione === 3 ? s : null; }
+  // Gli stati salvati prima della libreria dei protocolli non hanno la lista:
+  // si aggiunge vuota, senza cambiare versione.
+  function valido(s) {
+    if (!s || s.versione !== 3) return null;
+    if (s.config && !s.config.protocolli) s.config.protocolli = [];
+    return s;
+  }
 
   function leggiLocale() {
     try {
