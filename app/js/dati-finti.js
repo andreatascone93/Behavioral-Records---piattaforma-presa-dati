@@ -691,7 +691,8 @@
     // Scaletta della seduta per ogni paziente, proposta da seduta.js. Nelle
     // ultime 6 sedute la scaletta c'era già: i blocchi risultano svolti come
     // previsto, ogni evento porta il blocco in cui cade e le prove DTT si
-    // dividono tra probe a freddo (la prima) e insegnamento. Si aggiunge in
+    // dividono tra probe a freddo (le prime, quante ne prevede il probe) e
+    // insegnamento. Si aggiunge in
     // fondo, senza numeri casuali, così gli altri dati finti non cambiano.
     var Sd = root.BR.seduta;
     if (Sd) soggetti.forEach(function (s) {
@@ -716,7 +717,7 @@
         };
         var togli = [];
         mie.forEach(function (e) { if (e.tipo !== 'prova') segna(e, bloccoAlle(e.t)); });
-        // Prove DTT: la prima nel probe, le altre nel primo blocco di insegnamento del target.
+        // Prove DTT: le prime nel probe, le altre nel primo blocco di insegnamento del target.
         var perTarget = {};
         mie.forEach(function (e) { if (e.tipo === 'prova') (perTarget[e.targetId] = perTarget[e.targetId] || []).push(e); });
         Object.keys(perTarget).forEach(function (tid) {
@@ -724,8 +725,12 @@
           var probe = sess.scaletta.find(function (b) { return b.tipo === 'probe' && b.targetIds.indexOf(tid) !== -1; });
           var ins = sess.scaletta.find(function (b) { return b.tipo === 'insegnamento' && b.targetIds.indexOf(tid) !== -1; });
           // Gli orari restano quelli generati: le conseguenze segnate dipendono da loro.
-          prove.forEach(function (e, i) {
-            if (i === 0 && probe && !e.valore.mantenimento) {
+          var nProbe = probe ? probe.prove || 1 : 0;
+          prove.filter(function (e) { return !e.valore.mantenimento; }).slice(0, nProbe).forEach(function (e) { e._probe = true; });
+          prove.forEach(function (e) {
+            var inProbe = e._probe;
+            delete e._probe;
+            if (inProbe) {
               segna(e, probe);
               // Nel probe niente rinforzo: via la conseguenza generata per questa prova.
               mie.forEach(function (c) { if (c.tipo === 'conseguenza' && c.targetId === tid && c.t === e.t + 2000) togli.push(c); });

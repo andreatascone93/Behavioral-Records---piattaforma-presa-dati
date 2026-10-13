@@ -11,27 +11,31 @@
   'use strict';
 
   /*
-   * Valori di partenza della proposta automatica. Sono convenzioni
-   * ragionevoli e modificabili per paziente: vanno allineati alla rassegna
-   * della letteratura sulla gestione della seduta quando sarà disponibile.
+   * Valori di partenza della proposta automatica, allineati alla rassegna
+   * in docs/organizzazione-seduta-letteratura.md. La letteratura non fissa
+   * durate né percentuali: questi numeri sono convenzioni del software,
+   * modificabili per paziente. Dove c'è un appoggio, è nel commento.
    */
   var PREDEFINITI = {
-    accoglienzaMin: 5,        // pairing e scelta del rinforzatore
-    minutiPerProbe: 1,        // per target, una prova a freddo
-    proveProbe: 1,
-    minutiPerBaseline: 2,     // per target in baseline
+    accoglienzaMin: 5,          // pairing (esempio di 90 minuti, sez. 1.3)
+    preferenzeMin: 5,           // MSWO breve, dalle sedute di 60 minuti (DeLeon et al., 2001)
+    minutiPerProbe: 1,          // per target
+    proveProbe: 3,              // le prime 3 prove seguono bene i dati continui (Lerman et al., 2011)
+    minutiPerBaseline: 2,       // per target in baseline
     proveBaseline: 5,
-    bloccoInsegnamentoMax: 15, // oltre, una pausa
-    pausaMin: 3,
-    mantenimentoMin: 5,       // dalle sedute di 60 minuti in su
-    ritardoProbeMin: 30,      // tra la fine dell'insegnamento e il probe ritardato
-    proveProbeRitardato: 1,
-    chiusuraMin: 3
+    bloccoInsegnamentoMax: 20,  // esempio di 90 minuti: blocchi da 15-20 minuti
+    pausaMin: 5,
+    netDaMin: 60,               // nelle sedute lunghe un blocco di insegnamento diventa NET
+    minutiPerMantenimento: 2,   // probe dei target già padroneggiati, per target
+    ritardoProbeMin: 15,        // verifica nella stessa seduta: "dopo 15 minuti" (sez. 3.1)
+    proveProbeRitardato: 3,
+    chiusuraMin: 5
   };
 
   /*
    * contesto: come entrano i dati raccolti nel blocco.
-   *   probe: risposte senza prompt né rinforzo differenziale (valutazione)
+   *   probe: risposte senza prompt (valutazione); il rinforzo della risposta
+   *     corretta è una scelta del blocco (rinforzoProbe)
    *   insegnamento: prove di training, con prompt e rinforzo
    *   baseline: prove senza insegnamento
    *   nessuno: nessuna prova discreta (si misurano solo i target continui)
@@ -39,23 +43,25 @@
    */
   var TIPI = {
     accoglienza: { nome: 'Accoglienza e pairing', breve: 'Accoglienza', contesto: 'nessuno', prove: false,
-      descrizione: 'Associazione dell’operatore ai rinforzatori, scelta di cosa guadagnare.' },
+      descrizione: 'Associazione dell’operatore ai rinforzatori, richieste facili.' },
+    preferenze: { nome: 'Valutazione breve delle preferenze', breve: 'Preferenze', contesto: 'nessuno', prove: false,
+      descrizione: 'Scelta dei rinforzatori del giorno (es. MSWO breve con 5 oggetti).' },
     probe: { nome: 'Probe a freddo', breve: 'Probe', contesto: 'probe', prove: true,
-      descrizione: 'Prima presentazione del target nella seduta, prima di insegnarlo: niente prompt, niente rinforzo differenziale.' },
+      descrizione: 'Prime prove del target nella giornata, prima di insegnarlo, senza prompt. Va prima dell’insegnamento dello stesso target.' },
     baseline: { nome: 'Baseline', breve: 'Baseline', contesto: 'baseline', prove: true,
       descrizione: 'Prove senza insegnamento per i target non ancora in trattamento.' },
     insegnamento: { nome: 'Insegnamento (DTT)', breve: 'Insegnamento', contesto: 'insegnamento', prove: true,
       descrizione: 'Prove di insegnamento con prompt e rinforzo, come da programma.' },
     net: { nome: 'Insegnamento naturale (NET)', breve: 'NET', contesto: 'insegnamento', prove: true,
       descrizione: 'Occasioni di insegnamento dentro il gioco e le routine.' },
-    mantenimento: { nome: 'Mantenimento e generalizzazione', breve: 'Mantenimento', contesto: 'insegnamento', prove: true,
-      descrizione: 'Richieste su risposte già acquisite, materiali e persone diversi.' },
+    mantenimento: { nome: 'Probe di mantenimento e generalizzazione', breve: 'Mantenimento', contesto: 'probe', prove: true,
+      descrizione: 'Prove senza prompt sui target già padroneggiati, anche con persone, materiali o luoghi nuovi.' },
     pausa: { nome: 'Pausa e accesso al rinforzo', breve: 'Pausa', contesto: 'nessuno', prove: false,
       descrizione: 'Accesso libero ai rinforzatori; si continuano a misurare i target di tutta la seduta.' },
     attivita: { nome: 'Attività e gioco', breve: 'Attività', contesto: 'nessuno', prove: false,
       descrizione: 'Attività strutturate o gioco, mentre si misurano i target di tutta la seduta.' },
     probe_ritardato: { nome: 'Probe ritardato', breve: 'Probe ritardato', contesto: 'probe', prove: true,
-      descrizione: 'Ripresentazione dopo un intervallo dall’insegnamento, senza prompt: dice se la risposta si mantiene.' },
+      descrizione: 'Verifica nella stessa seduta, dopo un intervallo dall’insegnamento, senza prompt. La verifica a circa 24 ore è il probe a freddo della seduta dopo.' },
     chiusura: { nome: 'Chiusura', breve: 'Chiusura', contesto: 'nessuno', prove: false,
       descrizione: 'Transizione, saluto, eventuali note per la famiglia.' }
   };
@@ -75,7 +81,7 @@
   function nuovoId() { return root.BR.modello.nuovoId('bl'); }
 
   function blocco(tipo, durataMin, targetIds, extra) {
-    var b = { id: nuovoId(), tipo: tipo, nome: TIPI[tipo].nome, durataMin: durataMin, targetIds: targetIds || [], prove: null, ritardoMin: null, nota: '' };
+    var b = { id: nuovoId(), tipo: tipo, nome: TIPI[tipo].nome, durataMin: durataMin, targetIds: targetIds || [], prove: null, ritardoMin: null, rinforzoProbe: false, nota: '' };
     if (extra) Object.keys(extra).forEach(function (k) { b[k] = extra[k]; });
     return b;
   }
@@ -87,17 +93,21 @@
     return (sog.schedule.voci || []).map(function (v) { return tutti[v.targetId]; }).filter(Boolean);
   }
 
-  function inBaseline(programma) {
+  function faseInCorso(programma) {
     var f = programma.fasi && programma.fasi.length ? programma.fasi[programma.fasi.length - 1] : null;
-    return !f || f.tipo === 'baseline';
+    return f ? f.tipo : 'baseline';
   }
+  function inBaseline(programma) { return faseInCorso(programma) === 'baseline'; }
+  function inMantenimento(programma) { return /^(mantenimento|generalizzazione)$/.test(faseInCorso(programma)); }
 
   /*
    * Proposta di scaletta per la durata della schedule. I comportamenti e le
-   * misure continue vanno "per tutta la seduta"; i target a prove discrete
-   * in baseline hanno un blocco di baseline; quelli in trattamento hanno
-   * probe a freddo, blocchi di insegnamento intervallati da pause e, se c'è
-   * tempo per il ritardo, un probe ritardato prima della chiusura.
+   * misure continue vanno "per tutta la seduta"; dei target a prove
+   * discrete, quelli in baseline hanno un blocco di baseline, quelli in
+   * mantenimento o generalizzazione un blocco di probe di mantenimento,
+   * quelli in trattamento il probe a freddo, blocchi di insegnamento
+   * intervallati da pause (uno in NET nelle sedute lunghe) e, se c'è tempo
+   * per il ritardo, un probe ritardato prima della chiusura.
    * Restituisce { blocchi, continui, note }.
    */
   function proponi(sog, opzioni) {
@@ -106,49 +116,56 @@
     Object.keys(opzioni || {}).forEach(function (k) { o[k] = opzioni[k]; });
     var D = Math.max(5, +sog.schedule.durataMin || 30);
     var voci = targetDellaSchedule(sog);
-    var continui = voci.filter(function (x) { return !discreto(x.target); }).map(function (x) { return x.target.id; });
-    var base = voci.filter(function (x) { return discreto(x.target) && inBaseline(x.programma); }).map(function (x) { return x.target.id; });
-    var training = voci.filter(function (x) { return discreto(x.target) && !inBaseline(x.programma); }).map(function (x) { return x.target.id; });
+    var ids = function (filtro) { return voci.filter(filtro).map(function (x) { return x.target.id; }); };
+    var continui = ids(function (x) { return !discreto(x.target); });
+    var base = ids(function (x) { return discreto(x.target) && inBaseline(x.programma); });
+    var mant = ids(function (x) { return discreto(x.target) && inMantenimento(x.programma); });
+    var training = ids(function (x) { return discreto(x.target) && !inBaseline(x.programma) && !inMantenimento(x.programma); });
     var note = [];
 
     var testa = [], coda = [];
     var accoglienza = Math.min(o.accoglienzaMin, Math.round(D * 0.1)) || 0;
     var chiusura = Math.min(o.chiusuraMin, Math.round(D * 0.1)) || 0;
     if (accoglienza) testa.push(blocco('accoglienza', accoglienza));
+    if (D >= 60 && o.preferenzeMin) testa.push(blocco('preferenze', o.preferenzeMin));
     if (training.length) testa.push(blocco('probe', Math.max(2, Math.ceil(training.length * o.minutiPerProbe)), training.slice(), { prove: o.proveProbe }));
     if (base.length) testa.push(blocco('baseline', Math.max(3, base.length * o.minutiPerBaseline), base.slice(), { prove: o.proveBaseline }));
     if (chiusura) coda.push(blocco('chiusura', chiusura));
 
-    var fisso = somma(testa) + somma(coda);
-    var resto = D - fisso;
+    var resto = D - somma(testa) - somma(coda);
     var centro = [];
     if (training.length) {
-      centro = centroConRitardato(testa, resto, training, D, o);
+      centro = centroConRitardato(testa, resto, training, mant, D, o);
       if (!centro) {
-        centro = centroSemplice(resto, training, D, o);
-        note.push('Il probe ritardato non entra in una seduta di ' + D + ' minuti con ' + o.ritardoProbeMin + ' minuti di ritardo: fa da probe ritardato il probe a freddo della seduta successiva.');
+        centro = centroSemplice(resto, training, mant, D, o);
+        note.push('Il probe ritardato non entra in una seduta di ' + D + ' minuti con ' + o.ritardoProbeMin + ' minuti di ritardo: la verifica a distanza la fa il probe a freddo della seduta successiva.');
       }
-    } else if (resto > 0) {
-      centro.push(blocco('attivita', resto, []));
+    } else {
+      if (mant.length) centro.push(bloccoMantenimento(mant, o));
+      if (resto - somma(centro) > 0) centro.push(blocco('attivita', resto - somma(centro), []));
     }
     var blocchi = testa.concat(centro, coda);
-    // Se la somma non torna (sedute molto brevi), l'ultimo blocco non fisso assorbe la differenza.
+    // Se la somma non torna (sedute molto brevi), l'ultimo blocco regolabile assorbe la differenza.
     var diff = D - somma(blocchi);
     if (diff) {
-      var regolabile = blocchi.slice().reverse().find(function (b) { return b.tipo === 'insegnamento' || b.tipo === 'attivita'; }) || blocchi[blocchi.length - 1];
+      var regolabile = blocchi.slice().reverse().find(function (b) { return /^(insegnamento|net|attivita)$/.test(b.tipo); }) || blocchi[blocchi.length - 1];
       if (regolabile) regolabile.durataMin = Math.max(1, regolabile.durataMin + diff);
     }
     if (continui.length) note.push('Per tutta la seduta: ' + continui.length + (continui.length === 1 ? ' target misurato' : ' target misurati') + ' in continuo, in ogni blocco.');
     return { blocchi: blocchi, continui: continui, note: note };
   }
 
-  // Insegnamento (con pause) e, dalle sedute di 60 minuti, mantenimento.
-  function centroSemplice(minuti, training, D, o, riserva) {
-    var mant = D >= 60 ? o.mantenimentoMin : 0;
-    var perInsegnare = minuti - (riserva || 0) - mant;
-    if (perInsegnare < 5) { perInsegnare += mant; mant = 0; }
-    var centro = blocchiInsegnamento(perInsegnare, training, o);
-    if (mant) centro.push(blocco('mantenimento', mant, training.slice()));
+  function bloccoMantenimento(mant, o) {
+    return blocco('mantenimento', Math.max(3, Math.ceil(mant.length * o.minutiPerMantenimento)), mant.slice(), { prove: o.proveProbe });
+  }
+
+  // Insegnamento (con pause) e, se ci sono target padroneggiati, i loro probe di mantenimento.
+  function centroSemplice(minuti, training, mant, D, o, riserva) {
+    var mb = mant.length ? bloccoMantenimento(mant, o) : null;
+    var perInsegnare = minuti - (riserva || 0) - (mb ? mb.durataMin : 0);
+    if (perInsegnare < 5 && mb) { perInsegnare += mb.durataMin; mb = null; }
+    var centro = blocchiInsegnamento(perInsegnare, training, o, D);
+    if (mb) centro.push(mb);
     return centro;
   }
 
@@ -159,10 +176,10 @@
    * solo target non resta niente da fare nei blocchi tardivi, quindi il
    * probe ritardato entra solo se il ritardo c'è comunque. null se non entra.
    */
-  function centroConRitardato(testa, resto, training, D, o) {
+  function centroConRitardato(testa, resto, training, mant, D, o) {
     var durata = Math.max(2, Math.ceil(training.length * o.minutiPerProbe));
     if (resto - durata < 10) return null;
-    var centro = centroSemplice(resto, training, D, o, durata);
+    var centro = centroSemplice(resto, training, mant, D, o, durata);
     var gruppoA = training.length > 1 ? training.slice(0, Math.ceil(training.length / 2)) : training.slice();
     var inizioProbe = somma(testa) + somma(centro);
     var t = somma(testa);
@@ -182,18 +199,21 @@
   }
 
   // Divide il tempo in blocchi di insegnamento di al massimo
-  // bloccoInsegnamentoMax minuti con una pausa tra l'uno e l'altro.
-  function blocchiInsegnamento(minuti, targetIds, o) {
+  // bloccoInsegnamentoMax minuti con una pausa tra l'uno e l'altro. Nelle
+  // sedute lunghe, con almeno tre blocchi, quello centrale è in NET.
+  function blocchiInsegnamento(minuti, targetIds, o, D) {
     if (minuti <= 0) return [];
     var max = o.bloccoInsegnamentoMax, pausa = o.pausaMin;
     var k = Math.max(1, Math.ceil((minuti + pausa) / (max + pausa)));
     var perBlocco = Math.floor((minuti - (k - 1) * pausa) / k);
     while (k > 1 && perBlocco < 5) { k--; perBlocco = Math.floor((minuti - (k - 1) * pausa) / k); }
+    var net = D >= o.netDaMin && k >= 3 ? Math.floor(k / 2) : -1;
     var out = [];
-    var usati = 0;
+    var usati = 0, n = 0;
     for (var i = 0; i < k; i++) {
       var dur = i === k - 1 ? minuti - usati : perBlocco;
-      out.push(blocco('insegnamento', dur, targetIds.slice(), { nome: k > 1 ? 'Insegnamento ' + (i + 1) : TIPI.insegnamento.nome }));
+      if (i === net) out.push(blocco('net', dur, targetIds.slice()));
+      else { n++; out.push(blocco('insegnamento', dur, targetIds.slice(), { nome: k > 1 ? 'Insegnamento DTT ' + n : TIPI.insegnamento.nome })); }
       usati += dur;
       if (i < k - 1) { out.push(blocco('pausa', pausa)); usati += pausa; }
     }
@@ -267,6 +287,12 @@
         if (corti.length) out.push({ livello: 'attenzione', testo: 'Il probe ritardato di ' + elenco(corti, nomi) + ' arriva prima dei ' + ritardo + ' minuti di ritardo previsti.' });
       }
     });
+    // Pause a tempo e comportamenti con funzione di fuga: la pausa non deve
+    // arrivare subito dopo un episodio, altrimenti lo rinforza.
+    var fuga = conFuga(sog);
+    if (fuga.length && blocchi.some(function (b) { return b.tipo === 'pausa'; })) {
+      out.push({ livello: 'info', testo: 'Per ' + elenco(fuga.map(function (t) { return t.id; }), nomi) + ' l’ipotesi di funzione è la fuga: passa alla pausa dopo una risposta alternativa o un periodo di lavoro, mai subito dopo un episodio.' });
+    }
     // Insegnamento di fila senza pause.
     var fila = 0;
     blocchi.forEach(function (b) {
@@ -278,6 +304,14 @@
       }
     });
     return out;
+  }
+
+  // Target della seduta con ipotesi di funzione di fuga.
+  function conFuga(sog) {
+    var P = root.BR.piano;
+    return targetDellaSchedule(sog).map(function (x) { return x.target; }).filter(function (t) {
+      return t.ruolo === 'problema' && P && P.funzioniDi(t).indexOf('fuga') !== -1;
+    });
   }
 
   function elenco(ids, nomi) {
@@ -294,7 +328,7 @@
   function preparaSessione(sessione, sog, ora) {
     if (!haScaletta(sog)) return;
     sessione.scaletta = sog.schedule.blocchi.map(function (b) {
-      return { id: b.id, tipo: b.tipo, nome: b.nome, durataMin: b.durataMin, targetIds: b.targetIds.slice(), prove: b.prove, ritardoMin: b.ritardoMin, nota: b.nota || '' };
+      return { id: b.id, tipo: b.tipo, nome: b.nome, durataMin: b.durataMin, targetIds: b.targetIds.slice(), prove: b.prove, ritardoMin: b.ritardoMin, rinforzoProbe: !!b.rinforzoProbe, nota: b.nota || '' };
     });
     sessione.continui = (sog.schedule.continui || []).slice();
     sessione.blocchiSvolti = [{ bloccoId: sessione.scaletta[0].id, inizio: ora }];
@@ -414,11 +448,22 @@
     return out;
   }
 
-  // Durata reale dei blocchi svolti di una sessione chiusa, per il desktop.
-  function riassuntoSvolti(sessione) {
+  /*
+   * Durata reale dei blocchi svolti di una sessione, per il desktop, e per
+   * i target contati (eventi "occorrenza") quante volte sono successi in
+   * ciascun blocco: il tasso per blocco dice dove il comportamento si
+   * concentra (richieste, pause, transizioni). eventi è facoltativo.
+   */
+  function riassuntoSvolti(sessione, eventi) {
     return (sessione.blocchiSvolti || []).map(function (s) {
       var b = (sessione.scaletta || []).find(function (x) { return x.id === s.bloccoId; }) || {};
-      return { nome: b.nome || 'Blocco', tipo: b.tipo, previstiMin: b.durataMin, minuti: s.fine ? (s.fine - s.inizio) / 60000 : null };
+      var conti = {};
+      if (eventi) {
+        root.BR.modello.eventiValidi(eventi).forEach(function (e) {
+          if (e.tipo === 'occorrenza' && e.t >= s.inizio && (!s.fine || e.t < s.fine)) conti[e.targetId] = (conti[e.targetId] || 0) + 1;
+        });
+      }
+      return { nome: b.nome || 'Blocco', tipo: b.tipo, previstiMin: b.durataMin, minuti: s.fine ? (s.fine - s.inizio) / 60000 : null, occorrenze: conti };
     });
   }
 
@@ -427,7 +472,7 @@
     discreto: discreto, blocco: blocco, proponi: proponi, orari: orari, somma: somma, verifica: verifica,
     haScaletta: haScaletta, preparaSessione: preparaSessione, bloccoInCorso: bloccoInCorso, passaA: passaA, chiudi: chiudi,
     targetVisibili: targetVisibili, attesaRitardo: attesaRitardo, etichettaEvento: etichettaEvento,
-    eventiDelContesto: eventiDelContesto, valoriPerContesto: valoriPerContesto,
+    conFuga: conFuga, eventiDelContesto: eventiDelContesto, valoriPerContesto: valoriPerContesto,
     puntoNelContesto: puntoNelContesto, serieNelContesto: serieNelContesto, riassuntoSvolti: riassuntoSvolti
   };
   root.BR = root.BR || {};

@@ -471,6 +471,7 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .tm-blocco { border-left-width: 4px; }
 .svolti { margin-bottom: 0.6rem; }
 .svolti ol { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 3px; font-size: 0.88rem; }
+.svolti-conti { display: block; }
 .svolti li { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.15rem 0.5rem; }
 .segmenti { display: inline-flex; background: var(--superficie-2); border-radius: 999px; padding: 3px; margin-bottom: 0.4rem; flex-wrap: wrap; }
 .segmento { appearance: none; border: 0; background: transparent; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--testo-2); padding: 0.3rem 0.75rem; border-radius: 999px; cursor: pointer; }

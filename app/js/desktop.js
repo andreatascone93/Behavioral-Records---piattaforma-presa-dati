@@ -394,7 +394,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function registroEventi(s, sess, ev) {
-    return DS.svolti(sess) + fedeltaSessione(s, sess, ev) + elencoEventi(s, sess, ev);
+    return DS.svolti(s, sess, ev) + fedeltaSessione(s, sess, ev) + elencoEventi(s, sess, ev);
   }
 
   function fedeltaSessione(s, sess, ev) {

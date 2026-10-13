@@ -212,3 +212,46 @@ test('fedeltà: le risposte nei probe non sono occasioni di rinforzo', () => {
   assert.equal(r.percentuale, 100);
   assert.equal(r.opportunita, 2);
 });
+
+test('proposta allineata alla letteratura: preferenze e NET nelle sedute lunghe, probe di 3 prove, mantenimento sui padroneggiati', () => {
+  const sog = soggetto(90);
+  // Un terzo DTT già in mantenimento: va nei probe di mantenimento, non nell'insegnamento.
+  sog.programmi.push({ id: 'pr2', nome: 'Già appreso', fasi: [{ id: 'fa2', tipo: 'mantenimento', inizio: '2026-09-01' }], target: [{ id: 'tm', nome: 'Imita', metodo: metodo('dtt') }] });
+  sog.schedule.voci.push({ targetId: 'tm' });
+  const p = conScaletta(sog);
+  const tipi = p.blocchi.map((b) => b.tipo);
+  assert.equal(tipi[1], 'preferenze');
+  assert.ok(tipi.includes('net'));
+  const probe = p.blocchi.find((b) => b.tipo === 'probe');
+  assert.equal(probe.prove, 3);
+  assert.deepEqual(probe.targetIds, ['ta', 'tb']);
+  const mant = p.blocchi.find((b) => b.tipo === 'mantenimento');
+  assert.deepEqual(mant.targetIds, ['tm']);
+  assert.equal(Sd.TIPI.mantenimento.contesto, 'probe');
+  assert.ok(p.blocchi.filter((b) => b.tipo === 'insegnamento' || b.tipo === 'net').every((b) => !b.targetIds.includes('tm')));
+  assert.equal(Sd.somma(p.blocchi), 90);
+  assert.deepEqual(Sd.verifica(sog).filter((a) => a.livello === 'attenzione'), []);
+
+  const breve = conScaletta(soggetto(30)).blocchi.map((b) => b.tipo);
+  assert.ok(!breve.includes('preferenze') && !breve.includes('net'));
+});
+
+test('verifica: con un comportamento a funzione di fuga ricorda come dare la pausa', () => {
+  const sog = soggetto(60);
+  sog.programmi[0].target[0].funzione = { ipotesi: 'fuga' };
+  conScaletta(sog);
+  assert.match(Sd.verifica(sog).map((a) => a.testo).join('\n'), /“Colpi” l’ipotesi di funzione è la fuga: passa alla pausa dopo una risposta alternativa/);
+  assert.deepEqual(Sd.conFuga(sog).map((t) => t.id), ['tp']);
+});
+
+test('scaletta svolta: conteggio dei comportamenti per blocco', () => {
+  const min = 60000;
+  const sess = {
+    scaletta: [{ id: 'a', tipo: 'insegnamento', nome: 'DTT', durataMin: 10, targetIds: [] }, { id: 'b', tipo: 'pausa', nome: 'Pausa', durataMin: 5, targetIds: [] }],
+    blocchiSvolti: [{ bloccoId: 'a', inizio: 0, fine: 10 * min }, { bloccoId: 'b', inizio: 10 * min, fine: 15 * min }]
+  };
+  const occ = (id, t) => ({ id, tipo: 'occorrenza', t, targetId: 'tp' });
+  const eventi = [occ('1', 1 * min), occ('2', 2 * min), occ('3', 3 * min), occ('4', 12 * min), { id: '5', tipo: 'annulla', rif: '3', t: 3 * min + 1, targetId: 'tp' }];
+  const r = Sd.riassuntoSvolti(sess, eventi);
+  assert.deepEqual(r.map((x) => [x.nome, x.minuti, x.occorrenze.tp]), [['DTT', 10, 2], ['Pausa', 5, 1]]);
+});

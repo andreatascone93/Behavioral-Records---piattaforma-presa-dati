@@ -114,6 +114,7 @@
         }).join('') : '<span class="tenue piccolo">Nessun target a prove discrete nella seduta.</span>') + '</div>' +
         '<div class="blocco-numeri">' +
           '<label>Prove per target <input type="number" min="1" max="100" placeholder="metodo" value="' + (b.prove || '') + '" data-campo-blocco="prove"' + att + '></label>' +
+          (tipo.contesto === 'probe' ? '<label><input type="checkbox" data-campo-blocco="rinforzoProbe"' + att + (b.rinforzoProbe ? ' checked' : '') + '> Rinforzo per la risposta corretta</label>' : '') +
           (b.tipo === 'probe_ritardato' ? '<label>Ritardo minimo dall’insegnamento <input type="number" min="0" max="1440" value="' + (b.ritardoMin || 0) + '" data-campo-blocco="ritardoMin"' + att + '> min</label>' : '') +
         '</div></div>' : '') +
       '<input class="blocco-nota" type="text" placeholder="Nota per l’operatore (materiali, rinforzatori, istruzioni)" aria-label="Nota per l’operatore" value="' + esc(b.nota || '') + '" data-campo-blocco="nota"' + att + '>' +
@@ -234,7 +235,8 @@
     var b = trova(s, el.getAttribute('data-id'));
     if (!b) return true;
     var v = el.value;
-    if (campo === 'durataMin') b.durataMin = Math.max(1, Math.round(+v) || b.durataMin);
+    if (campo === 'rinforzoProbe') b.rinforzoProbe = el.checked;
+    else if (campo === 'durataMin') b.durataMin = Math.max(1, Math.round(+v) || b.durataMin);
     else if (campo === 'prove') b.prove = +v > 0 ? Math.round(+v) : null;
     else if (campo === 'ritardoMin') b.ritardoMin = Math.max(0, Math.round(+v) || 0);
     else if (campo === 'tipo') {
@@ -265,13 +267,20 @@
   }
 
   // Blocchi svolti in una seduta registrata, per la scheda Sessioni.
-  function svolti(sess) {
-    var r = S.riassuntoSvolti(sess);
+  // Con i conteggi dei comportamenti per blocco, come tasso al minuto.
+  function svolti(s, sess, eventi) {
+    var r = S.riassuntoSvolti(sess, eventi);
     if (!r.length) return '';
+    var nomi = nomiTarget(s);
     return '<div class="svolti"><span class="etichetta">Scaletta svolta</span><ol>' + r.map(function (x) {
       var tipo = S.TIPI[x.tipo] || S.TIPI.attivita;
       var reale = x.minuti == null ? 'in corso' : M.formatta(x.minuti, 'durata') + ' min';
-      return '<li class="ctx-bordo-' + tipo.contesto + '"><span>' + esc(x.nome) + '</span><span class="dato tenue">' + reale + (x.previstiMin ? ' su ' + x.previstiMin : '') + '</span></li>';
+      var conti = Object.keys(x.occorrenze).map(function (id) {
+        var n = x.occorrenze[id];
+        return esc(nomi[id] ? nomi[id].target.nome : '?') + ' ' + n + (x.minuti ? ' (' + M.formatta(n / Math.max(x.minuti, 1), 'frequenza') + '/min)' : '');
+      }).join(' · ');
+      return '<li class="ctx-bordo-' + tipo.contesto + '"><span>' + esc(x.nome) + (conti ? '<span class="tenue piccolo svolti-conti">' + conti + '</span>' : '') + '</span>' +
+        '<span class="dato tenue">' + reale + (x.previstiMin ? ' su ' + x.previstiMin : '') + '</span></li>';
     }).join('') + '</ol></div>';
   }
 

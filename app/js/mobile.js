@@ -190,12 +190,19 @@ BR.archivio.avvia().then(function (statoIniziale) {
   // del probe ritardato, le pause.
   function avvisoBlocco(sess, c) {
     var b = c.blocco;
-    if (b.tipo === 'probe' || b.tipo === 'probe_ritardato') {
+    if ((Sd.TIPI[b.tipo] || {}).contesto === 'probe') {
       var attesa = Sd.attesaRitardo(sess, b, Date.now());
-      return '<div class="avviso probe-avviso"><strong>Probe:</strong> presenta la richiesta una volta' + (b.prove > 1 ? ' per ' + b.prove + ' prove' : '') +
-        ', senza prompt e senza rinforzo differenziale. Segna corretta solo la risposta indipendente.' +
+      return '<div class="avviso probe-avviso"><strong>Probe:</strong> ' + (b.prove > 1 ? b.prove + ' prove per target' : 'una prova per target') +
+        ', senza prompt. ' + (b.rinforzoProbe ? 'Rinforzo solo per la risposta corretta, nessun feedback per l’errore.' : 'Nessuna conseguenza, né per la risposta corretta né per l’errore.') +
+        ' Segna corretta solo la risposta indipendente.' +
         (attesa ? '<br><strong>Ritardo non ancora passato:</strong> mancano <span class="dato" data-live="timer-ritardo" data-scadenza="' + (Date.now() + attesa) + '">' + U.mmss(attesa) + '</span> ai ' + b.ritardoMin + ' minuti previsti dall’insegnamento.' : '') +
         '</div>';
+    }
+    if (b.tipo === 'pausa') {
+      var fuga = Sd.conFuga(sog());
+      if (fuga.length) {
+        return '<div class="avviso">Pausa: per ' + fuga.map(function (t) { return esc(t.nome); }).join(', ') + ' l’ipotesi è la fuga. Inizia la pausa dopo una risposta alternativa o un periodo di lavoro, mai subito dopo un episodio.</div>';
+      }
     }
     if (!(Sd.TIPI[b.tipo] || {}).prove) return '<p class="tenue piccolo blocco-descr">' + esc((Sd.TIPI[b.tipo] || Sd.TIPI.attivita).descrizione) + '</p>';
     return '';
@@ -237,9 +244,10 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function promemoria(sess, pr, t) {
-    // Nel probe i target del blocco non ricevono rinforzo differenziale.
+    // Nel probe i target del blocco non ricevono conseguenze, salvo che il
+  // blocco preveda il rinforzo della risposta corretta.
     var bl = bloccoDi(sess);
-    var inProbe = bl && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1;
+    var inProbe = bl && !bl.blocco.rinforzoProbe && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1;
     return pianoCrisi(pr, t) + (inProbe ? '' : conseguenze(sess, pr, t));
   }
 
@@ -523,7 +531,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   function strProve(sess, t) {
     // Con la scaletta, le prove contano nel blocco in corso.
     var bl = bloccoDi(sess);
-    var probe = !!bl && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe';
+    var probe = !!bl && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1;
     var tutte = evValidi(sess, t).filter(function (e) { return e.tipo === 'prova' && (!bl || e.blocco === bl.blocco.id); });
     var ev = tutte.filter(function (e) { return !e.valore.mantenimento; });
     var facili = tutte.filter(function (e) { return e.valore.mantenimento; });

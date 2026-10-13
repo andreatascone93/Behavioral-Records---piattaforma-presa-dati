@@ -17,8 +17,9 @@ Richiesta di Andrea (13 ottobre 2026): oltre a registrare i dati, organizzare la
 - in alto il **blocco in corso** con il tempo trascorso sul previsto; a tempo scaduto il riquadro cambia colore e il telefono vibra;
 - **Passa a…** chiude il blocco e apre il successivo; **Scaletta** mostra tutti i blocchi con orari previsti e durata reale, e permette di saltare o tornare a un blocco;
 - sotto, prima i target del blocco, poi quelli di tutta la seduta;
-- nei **probe** la scheda DTT ha solo *Corretta* ed *Errore o nessuna risposta*, senza livelli di prompt, e non mostra i tasti delle conseguenze programmate; le prove contano nel blocco (es. 1 di 1);
-- nel **probe ritardato** il telefono dice quanto manca al ritardo minimo dalla fine dell’ultimo blocco di insegnamento.
+- nei **probe** la scheda DTT ha solo *Corretta* ed *Errore o nessuna risposta*, senza livelli di prompt; le prove contano nel blocco (es. 1 di 3). Se il blocco non prevede il rinforzo della risposta corretta, i tasti delle conseguenze programmate non compaiono;
+- nel **probe ritardato** il telefono dice quanto manca al ritardo minimo dalla fine dell’ultimo blocco di insegnamento;
+- nelle **pause**, se un comportamento problema ha ipotesi di funzione di fuga, il telefono ricorda di iniziare la pausa dopo una risposta alternativa o un periodo di lavoro, mai subito dopo un episodio.
 
 Senza scaletta tutto resta come prima: tutti i target insieme.
 
@@ -26,16 +27,19 @@ Senza scaletta tutto resta come prima: tutti i target insieme.
 
 | Tipo | Dati raccolti | A cosa serve |
 | --- | --- | --- |
-| Accoglienza e pairing | nessuna prova | Associare l’operatore ai rinforzatori, scegliere cosa guadagnare |
-| Probe a freddo | probe | Prima presentazione del target, prima di insegnarlo: niente prompt, niente rinforzo differenziale |
+| Accoglienza e pairing | nessuna prova | Associare l’operatore ai rinforzatori, richieste facili |
+| Valutazione breve delle preferenze | nessuna prova | Scegliere i rinforzatori del giorno (es. MSWO breve) |
+| Probe a freddo | probe | Prime prove del target nella giornata, prima di insegnarlo, senza prompt |
 | Baseline | baseline | Prove senza insegnamento per i target non ancora in trattamento |
 | Insegnamento (DTT) | insegnamento | Prove con prompt e rinforzo, come da programma |
 | Insegnamento naturale (NET) | insegnamento | Occasioni di insegnamento dentro il gioco e le routine |
-| Mantenimento e generalizzazione | insegnamento | Richieste su risposte già acquisite, materiali e persone diversi |
+| Probe di mantenimento e generalizzazione | probe | Prove senza prompt sui target già padroneggiati, anche con persone, materiali o luoghi nuovi |
 | Pausa e accesso al rinforzo | nessuna prova | Accesso libero ai rinforzatori |
 | Attività e gioco | nessuna prova | Attività mentre si misurano i target di tutta la seduta |
-| Probe ritardato | probe | Ripresentazione dopo un intervallo dall’insegnamento, senza prompt |
+| Probe ritardato | probe | Verifica nella stessa seduta, dopo un intervallo dall’insegnamento, senza prompt |
 | Chiusura | nessuna prova | Transizione, saluto, note per la famiglia |
+
+Per ogni blocco di probe si sceglie se la risposta corretta riceve il rinforzo (*Rinforzo per la risposta corretta*) o se non c’è nessuna conseguenza: la rassegna nota che i programmi fanno entrambe le cose e che la scelta va dichiarata, perché cambia la misura.
 
 ## I dati: probe separati dall’insegnamento
 
@@ -44,30 +48,54 @@ Ogni evento registrato durante un blocco porta il **blocco** e il suo **contesto
 - **Grafici**: per i target a prove discrete con dati della scaletta compare la scelta *Tutte le prove · Solo probe · Solo insegnamento*. Sui probe la serie salta le sedute senza probe.
 - **Criterio di padronanza**: nel target (e nei criteri per fase del piano) si può scegliere *Prove che contano: solo i probe della scaletta* o *solo le prove di insegnamento*. Con i probe contano solo le sedute che ne hanno; le altre non interrompono la serie. Si combina con livello di prompt, prima prova, operatori e setting.
 - **Elenco di risposte** (obiettivi numerici): con il criterio sui probe, anche la padronanza di ogni risposta si valuta sui probe.
-- **Fedeltà del trattamento**: le risposte dei probe non sono occasioni di rinforzo, quindi non contano come omissioni.
-- **Sessioni**: il dettaglio di una seduta mostra la scaletta svolta con la durata reale di ogni blocco, e ogni prova dice se era di probe o di insegnamento.
+- **Fedeltà del trattamento**: le risposte dei probe (e le eventuali conseguenze date nei probe) restano fuori dal calcolo.
+- **Sessioni**: il dettaglio di una seduta mostra la scaletta svolta con la durata reale di ogni blocco, quante volte è successo ogni comportamento contato in quel blocco e il tasso al minuto (la rassegna, sez. 5, suggerisce il tasso per blocco per capire dove si concentra il problema), e ogni prova dice se era di probe o di insegnamento.
 
 ## La proposta automatica
 
-Dalla durata prevista e dai target della seduta:
+La rassegna della letteratura ([organizzazione-seduta-letteratura.md](organizzazione-seduta-letteratura.md)) è chiara su un punto: **nessuno studio fissa durate o percentuali** per training, probe e mantenimento dentro la seduta. Fissa invece alcuni vincoli, che la proposta rispetta e i controlli verificano:
+
+- il probe a freddo di un target viene **prima** del suo insegnamento (Cummings & Carr, 2009; Lerman et al., 2011);
+- il comportamento problema si misura **per tutta la seduta**, annotando il blocco (Carroll & Kodak, 2014);
+- i dati di probe e di training restano **serie distinte**, e il criterio dichiara su quale si calcola;
+- la verifica dopo il training ha tre scale: **stessa seduta** (il probe ritardato), **circa 24 ore** (il probe a freddo della seduta dopo), **settimane dopo la padronanza** (i probe di mantenimento).
+
+Dalla durata prevista e dai target della seduta la proposta costruisce:
 
 1. **Accoglienza** (5 minuti, al massimo il 10% della seduta).
-2. **Probe a freddo** dei target a prove discrete in trattamento: 1 prova per target, circa 1 minuto per target.
-3. **Baseline** dei target a prove discrete il cui programma è ancora in baseline: 5 prove, circa 2 minuti per target.
-4. **Insegnamento** in blocchi di al massimo 15 minuti separati da **pause** di 3 minuti.
-5. **Mantenimento** (5 minuti) dalle sedute di 60 minuti in su.
-6. **Probe ritardato** se ci sta: metà dei target (quelli insegnati per primi) si insegna solo nei blocchi che finiscono almeno 30 minuti prima del probe; nei blocchi successivi si lavora sugli altri. Se il ritardo non entra (es. sedute di 30 minuti, o un solo target), fa da probe ritardato il probe a freddo della seduta successiva, e la proposta lo dice.
-7. **Chiusura** (3 minuti).
+2. **Valutazione breve delle preferenze** (5 minuti) dalle sedute di 60 minuti.
+3. **Probe a freddo** dei target a prove discrete in trattamento: **3 prove per target** (le prime 3 prove seguono bene i dati continui, mentre la sola prima prova li anticipa e li sottostima: Lerman et al., 2011; Carey & Bourret, 2014), circa 1 minuto per target.
+4. **Baseline** dei target il cui programma è ancora in baseline: 5 prove, circa 2 minuti per target.
+5. **Insegnamento** in blocchi di al massimo 20 minuti separati da **pause** di 5 minuti; dalle sedute di 60 minuti, con almeno tre blocchi, quello centrale è in **NET**.
+6. **Probe di mantenimento** dei target il cui programma è in mantenimento o generalizzazione (2 minuti per target, almeno 3).
+7. **Probe ritardato** se ci sta, con **15 minuti** di ritardo (la rassegna propone "dopo il blocco successivo" o "dopo 15 minuti"): metà dei target (quelli insegnati per primi) si insegna solo nei blocchi che finiscono almeno 15 minuti prima del probe; nei blocchi successivi si lavora sugli altri. Se il ritardo non entra (sedute di 30 minuti, o un solo target), la verifica a distanza la fa il probe a freddo della seduta successiva, e la proposta lo dice.
+8. **Chiusura** (5 minuti, al massimo il 10% della seduta).
 
 I comportamenti e le misure continue (frequenza, durata, intervalli, campionamento momentaneo, IRT, ABC) vanno **per tutta la seduta**; DTT, task analysis e latenza vanno nei blocchi.
 
-Esempio, seduta di 90 minuti con due target DTT e un comportamento problema: accoglienza 5, probe a freddo 2, insegnamento 12, pausa 3, insegnamento 12, pausa 3, insegnamento 12, pausa 3, insegnamento 12 (solo il secondo target), pausa 3, insegnamento 13 (solo il secondo target), mantenimento 5 (solo il secondo target), probe ritardato 2 (primo target, 36 minuti dopo il suo ultimo insegnamento), chiusura 3; il comportamento problema si conta per tutti i 90 minuti.
+Esempio, seduta di 90 minuti con due target DTT (A e B) e un comportamento problema:
 
-**Questi valori sono convenzioni di partenza del software, non risultati della letteratura.** Stanno tutti in `PREDEFINITI` in `app/js/seduta.js` e si allineano alla rassegna sulla gestione della seduta (thread “Letteratura sulla gestione della seduta”) quando sarà disponibile. In ogni caso la scaletta di ogni paziente si modifica a mano.
+| Minuti | Blocco | Target |
+| --- | --- | --- |
+| 0–5 | Accoglienza e pairing | |
+| 5–10 | Valutazione breve delle preferenze | |
+| 10–12 | Probe a freddo, 3 prove | A, B |
+| 12–26 | Insegnamento DTT 1 | A, B |
+| 26–31 | Pausa | |
+| 31–45 | Insegnamento DTT 2 | A, B |
+| 45–50 | Pausa | |
+| 50–64 | Insegnamento naturale (NET) | A, B |
+| 64–69 | Pausa | |
+| 69–83 | Insegnamento DTT 3 | B |
+| 83–85 | Probe ritardato, 3 prove | A (19 minuti dopo il suo ultimo insegnamento) |
+| 85–90 | Chiusura | |
+| 0–90 | Comportamento problema | per tutta la seduta |
+
+**Le durate restano convenzioni del software**, non risultati di ricerca: stanno in `PREDEFINITI` in `app/js/seduta.js`, ognuna con il suo appoggio nel commento quando c’è, e la scaletta di ogni paziente si modifica a mano. Anche le scelte che la rassegna dà come individuali (pratica concentrata o distribuita, ITI, rapporto di interspersal) restano al clinico.
 
 ## Modello dei dati
 
-- `soggetto.schedule.blocchi`: `[{ id, tipo, nome, durataMin, targetIds, prove, ritardoMin, nota }]`; `prove` vuoto = come da metodo; `ritardoMin` solo per il probe ritardato.
+- `soggetto.schedule.blocchi`: `[{ id, tipo, nome, durataMin, targetIds, prove, ritardoMin, rinforzoProbe, nota }]`; `prove` vuoto = come da metodo; `ritardoMin` solo per il probe ritardato; `rinforzoProbe` solo per i blocchi di probe.
 - `soggetto.schedule.continui`: id dei target di tutta la seduta.
 - `sessione.scaletta`: copia dei blocchi all’apertura (così i nomi restano anche se poi la schedule cambia); `sessione.continui`; `sessione.blocchiSvolti`: `[{ bloccoId, inizio, fine }]`, un blocco può comparire più volte se si torna indietro.
 - `evento.blocco`, `evento.contesto`.
@@ -76,6 +104,11 @@ Esempio, seduta di 90 minuti con due target DTT e un comportamento problema: acc
 
 ## Cosa resta fuori
 
-- Una sola scaletta per paziente: se servono sedute diverse (es. giorno di probe e giorno di training) per ora si modifica la scaletta prima della seduta.
-- La proposta non tiene conto della difficoltà dei target, delle preferenze del giorno o dell’interspersione con rapporti precisi tra richieste facili e nuove (già gestita a parte nell’elenco di risposte).
-- Il riepilogo sul telefono non distingue ancora probe e insegnamento.
+Dalla sezione 8 della rassegna, non ancora nell’app:
+
+- **più modelli di seduta per paziente** (es. "seduta lunga", "seduta a domicilio"): per ora una scaletta, da modificare prima della seduta;
+- **calendario dei probe di mantenimento** (1, 2, 4 settimane dalla padronanza, poi mensile) con i target in scadenza inseriti da soli nel blocco di mantenimento e il ritorno in training se il probe va sotto criterio: oggi il blocco prende i target dei programmi in fase di mantenimento o generalizzazione;
+- **parametri del training** nel blocco: formato (a blocchi, misto, interspersal), rapporto tra target padroneggiati e in acquisizione, ITI come promemoria; l’ITI medio misurato dagli orari delle prove;
+- **probe e training sullo stesso grafico** con simboli diversi (oggi si sceglie quale serie vedere), tasso del comportamento problema **per tipo di blocco** sull’insieme delle sedute (oggi è per seduta, nel dettaglio), percentuale di tempo effettivo per tipo di blocco;
+- per i probe, il livello di prompt che sarebbe servito;
+- il riepilogo sul telefono non distingue ancora probe e insegnamento.
