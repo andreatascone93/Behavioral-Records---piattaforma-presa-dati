@@ -52,6 +52,8 @@ Le frecce piene indicano "contiene"; quelle tratteggiate indicano un riferimento
 
 Regole di relazione: un soggetto ha più programmi; un programma ha più fasi e più target; ogni target ha di norma un metodo, ma può averne più di uno (es. frequenza e durata dello stesso comportamento). Una sessione segue una schedule e raccoglie gli eventi; ogni evento indica target e metodo, così i grafici sanno sempre a cosa appartiene.
 
+Il piano di intervento (ruoli dei target, funzione, fasi pianificate, conseguenze programmate) è descritto in [piano-intervento.md](piano-intervento.md).
+
 ## Misure ABA standard
 
 Dieci tipi di misura coprono quasi tutti i programmi ABA; ognuno ha uno strumento sul telefono e una regola di calcolo. Per tutti, il telefono salva solo eventi con orario.
@@ -67,7 +69,7 @@ Dieci tipi di misura coprono quasi tutti i programmi ABA; ognuno ha uno strument
 | Campionamento momentaneo | Osservazioni lunghe o più soggetti | Timer che vibra a fine intervallo | Per ogni istante: sì o no | % di istanti con il comportamento |
 | Prove discrete (DTT) con prompt | Insegnamento di abilità | Griglia prove con pulsanti corretto, errore, livelli di prompt | Per ogni prova: esito e livello di prompt | % di risposte corrette indipendenti; distribuzione dei prompt |
 | Task analysis | Catene di passi (lavarsi le mani) | Lista dei passi con livello di prompt | Per ogni passo: livello di prompt | % di passi indipendenti |
-| ABC | Analisi funzionale descrittiva | Scheda rapida con scelte predefinite | Antecedente, comportamento, conseguenza, nota | Conteggio per combinazione A-B-C |
+| ABC | Osservazione descrittiva per l'ipotesi di funzione (non è un intervento) | Scheda rapida con scelte predefinite | Antecedente, comportamento, conseguenza, nota | Conteggio per combinazione A-B-C |
 
 Gerarchia dei prompt di default (dal più al meno intrusivo): fisico totale, fisico parziale, modello, gestuale, verbale, indipendente. È modificabile per programma.
 

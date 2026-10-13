@@ -305,3 +305,56 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
   .barra { padding-inline: 16px; }
   .campi-riga .largo { grid-column: auto; }
 }
+
+/* Ruoli dei target */
+.pillola.ruolo-problema { background: var(--critico-tenue); color: var(--critico); }
+.pillola.ruolo-sostitutivo { background: var(--bene-tenue); color: var(--bene); }
+.pillola.ruolo-abilita { background: var(--penna-tenue); color: var(--penna); }
+.pillola.ruolo-valutazione { background: var(--superficie-2); color: var(--testo-2); }
+
+/* Piano di intervento */
+.piano { display: grid; gap: 1rem; }
+.sintesi-target { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.sintesi-target li { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 0.6rem; align-items: start; }
+.sintesi-target .pillola { justify-self: start; }
+.obiettivo { color: var(--testo-2); margin-top: 0.1rem; }
+.avvisi { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.86rem; }
+.avvisi li { padding: 0.45rem 0.7rem; border-radius: var(--r-piccolo); }
+.avviso-attenzione { background: var(--attenzione-tenue); color: var(--attenzione); font-weight: 700; }
+.avviso-info { background: var(--superficie-2); color: var(--testo-2); }
+.piano-fasi { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.fase-piano {
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--linea);
+  border-radius: var(--r-piccolo);
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.fase-piano.corrente { border-left-color: var(--penna); background: color-mix(in srgb, var(--penna-tenue) 45%, transparent); }
+.fase-piano.svolta { opacity: 0.85; }
+.fase-piano.prevista { border-style: dashed; border-left-style: solid; }
+.fase-piano-testa { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; }
+.fase-n { color: var(--testo-2); text-align: center; font-size: 1.1rem; }
+.fase-piano-titolo { display: grid; min-width: 0; }
+.fase-piano-azioni { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.fase-descrizione { font-size: 0.9rem; }
+.fase-colonne { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 1rem; }
+.lista-piano { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.45rem; font-size: 0.88rem; }
+.uscita { border-top: 1px solid var(--griglia); padding-top: 0.5rem; }
+
+/* Righe dinamiche nella finestra della fase */
+.riga-piano { border: 1px solid var(--griglia); border-radius: var(--r-piccolo); padding: 0.6rem; display: grid; gap: 0.6rem; margin-bottom: 0.5rem; }
+.riga-piano-testa { display: flex; justify-content: space-between; align-items: center; }
+.riga-piano-testa .btn { min-height: 30px; padding: 0.2rem 0.4rem; }
+.sottogruppo { display: grid; gap: 0.45rem; }
+.spunte { display: grid; gap: 0.3rem; }
+.spunte .spunta { font-weight: 400; }
+[hidden] { display: none !important; }
+
+@media (max-width: 900px) {
+  .fase-colonne { grid-template-columns: minmax(0, 1fr); }
+  .fase-piano-testa { grid-template-columns: 28px minmax(0, 1fr); }
+  .fase-piano-azioni { grid-column: 1 / -1; justify-content: flex-start; }
+  .sintesi-target li { grid-template-columns: minmax(0, 1fr); }
+}

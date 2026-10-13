@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui;
+  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano;
   var esc = U.esc;
 
   var stato = A.carica();
@@ -20,11 +20,13 @@
   var SCHEDE = [
     { id: 'grafici', nome: 'Grafici' },
     { id: 'programmi', nome: 'Programmi e target' },
+    { id: 'piano', nome: 'Piano di intervento' },
     { id: 'schedule', nome: 'Schedule di seduta' },
     { id: 'sessioni', nome: 'Sessioni' }
   ];
 
   function salva() { A.salva(stato); disegna(); }
+  var ctxPiano = { salva: function () { salva(); } };
   function corrente() { return A.soggetto(stato, vista.soggettoId); }
 
   // ---- Barra e elenco pazienti ----------------------------------------------
@@ -90,8 +92,8 @@
         return '<button type="button" role="tab" class="scheda' + (t.id === vista.scheda ? ' attiva' : '') + '" aria-selected="' + (t.id === vista.scheda) + '" data-azione="scheda" data-id="' + t.id + '">' + t.nome + '</button>';
       }).join('') + '</div>' +
       '<div class="contenuto" role="tabpanel">' + ({
-        grafici: vistaGrafici, programmi: vistaProgrammi, schedule: vistaSchedule, sessioni: vistaSessioni
-      }[vista.scheda])(s) + '</div>';
+        grafici: vistaGrafici, programmi: vistaProgrammi, piano: D.vista, schedule: vistaSchedule, sessioni: vistaSessioni
+      }[vista.scheda] || vistaGrafici)(s) + '</div>';
     main.innerHTML = html;
   }
 
@@ -108,9 +110,11 @@
     if (!s.programmi.length) return vuoto('Nessun programma per questo paziente.', 'Crea il primo programma nella scheda Programmi e target.');
     return s.programmi.map(function (pr) {
       var fase = A.faseCorrente(pr);
+      var prossima = P.prossimaFase(pr);
       var carte = pr.target.map(function (t) {
         var punti = A.serie(stato, s, pr, t, { soloSincronizzate: true });
         var c = A.statoCriterio(pr, t, punti);
+        var criterio = A.criterioCorrente(pr, t);
         var tipo = M.TIPI[t.metodo.tipo];
         var ultimo = punti.length ? punti[punti.length - 1] : null;
         var chiaveTab = t.id;
@@ -121,18 +125,21 @@
         return '<article class="carta-grafico">' +
           '<div class="carta-testa">' +
             '<div><h3>' + esc(t.nome) + '</h3>' +
-            '<p class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(M.descriviCriterio(t.metodo.criterio, t.metodo.tipo)) + '</p></div>' +
+            '<p class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(M.descriviCriterio(criterio, t.metodo.tipo)) + '</p></div>' +
             '<div class="carta-valore"><span class="dato grande">' + (ultimo ? M.formatta(ultimo.valore, t.metodo.tipo) : '–') + '</span>' +
             '<span class="tenue piccolo">' + esc(tipo.unita) + ' · ultima</span></div>' +
           '</div>' +
           '<div class="carta-stato">' + pillolaCriterio(c) +
-            (t.direzione === 'ridurre' ? '<span class="pillola senza-punto">Da ridurre</span>' : '<span class="pillola senza-punto">Da aumentare</span>') +
+            '<span class="pillola senza-punto ruolo-' + (t.ruolo || 'abilita') + '">' + esc((P.RUOLI[t.ruolo] || P.RUOLI.abilita).breve) + '</span>' +
           '</div>' +
-          (c && c.raggiunto && fase === 'intervento'
+          (c && c.raggiunto && prossima
+            ? '<div class="proposta"><span>Il criterio è raggiunto. Vuoi passare a “' + esc(prossima.nome) + '”?</span>' +
+              '<button class="btn btn-primario" type="button" data-azione="avvia-fase-piano" data-programma="' + pr.id + '" data-id="' + prossima.id + '">Avvia la fase</button></div>'
+            : c && c.raggiunto && fase === 'intervento'
             ? '<div class="proposta"><span>Il criterio è raggiunto. Vuoi passare alla fase di mantenimento?</span>' +
-              '<button class="btn btn-primario" type="button" data-azione="cambia-fase" data-programma="' + pr.id + '" data-fase="mantenimento">Passa a mantenimento</button></div>'
+              '<button class="btn btn-primario" type="button" data-azione="cambia-fase" data-programma="' + pr.id + '" data-fase="t:mantenimento">Passa a mantenimento</button></div>'
             : '') +
-          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: t.metodo.criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
+          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
           (punti.escluse ? '<p class="tenue piccolo">' + punti.escluse + (punti.escluse === 1 ? ' sessione registrata' : ' sessioni registrate') + ' con un tipo di misura precedente non ' + (punti.escluse === 1 ? 'è' : 'sono') + ' nel grafico.</p>' : '') +
           extra +
           '<button class="btn btn-piatto piccolo" type="button" data-azione="tabella" data-id="' + chiaveTab + '">' + (tabella ? 'Nascondi i valori' : 'Mostra i valori in tabella') + '</button>' +
@@ -141,7 +148,7 @@
       }).join('');
       return '<section class="gruppo">' +
         '<div class="gruppo-testa"><h2>' + esc(pr.nome) + '</h2>' +
-        '<span class="pillola penna">Fase: ' + esc(M.FASI[fase]) + '</span></div>' +
+        '<span class="pillola penna">Fase: ' + esc(A.nomeFaseCorrente(pr)) + '</span></div>' +
         (carte ? '<div class="griglia-grafici">' + carte + '</div>' : '<p class="tenue">Nessun target in questo programma.</p>') +
       '</section>';
     }).join('');
@@ -150,7 +157,7 @@
   function tabellaValori(punti, t) {
     return '<div class="tabella-box"><table class="tabella"><thead><tr><th>Sessione</th><th>Data</th><th>Fase</th><th class="num">' + esc(M.TIPI[t.metodo.tipo].unita) + '</th></tr></thead><tbody>' +
       punti.map(function (p, i) {
-        return '<tr><td class="dato">' + (i + 1) + '</td><td>' + U.data(p.sessione.inizio) + '</td><td>' + esc(M.FASI[p.fase]) + '</td><td class="num dato">' + M.formatta(p.valore, t.metodo.tipo) + '</td></tr>';
+        return '<tr><td class="dato">' + (i + 1) + '</td><td>' + U.data(p.sessione.inizio) + '</td><td>' + esc(p.faseNome) + '</td><td class="num dato">' + M.formatta(p.valore, t.metodo.tipo) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -202,13 +209,16 @@
         '</div>' +
         '<ol class="fasi">' + pr.fasi.map(function (f, i) {
           var ultima = i === pr.fasi.length - 1;
-          return '<li class="' + (ultima ? 'corrente' : '') + '"><span class="fase-nome">' + esc(M.FASI[f.tipo]) + '</span>' +
+          return '<li class="' + (ultima ? 'corrente' : '') + '"><span class="fase-nome">' + esc(P.nomeFase(pr, f)) + '</span>' +
             '<span class="tenue piccolo">dal ' + U.data(new Date(f.inizio + 'T12:00:00').getTime()) + (ultima ? ' · in corso' : '') + '</span></li>';
         }).join('') + '</ol>' +
-        '<div class="tabella-box"><table class="tabella target"><thead><tr><th>Target</th><th>Misura</th><th>Sul telefono</th><th>Criterio</th><th></th></tr></thead><tbody>' +
+        '<div class="tabella-box"><table class="tabella target"><thead><tr><th>Target</th><th>Ruolo</th><th>Misura</th><th>Sul telefono</th><th>Criterio</th><th></th></tr></thead><tbody>' +
         pr.target.map(function (t) {
           var tipo = M.TIPI[t.metodo.tipo];
+          var ruolo = P.RUOLI[t.ruolo] || P.RUOLI.abilita;
+          var funz = t.ruolo === 'problema' && t.funzione && P.FUNZIONI[t.funzione.ipotesi] ? P.FUNZIONI[t.funzione.ipotesi].nome : '';
           return '<tr><td><strong>' + esc(t.nome) + '</strong><div class="tenue piccolo definizione">' + esc(t.definizione.include || '') + '</div></td>' +
+            '<td><span class="pillola senza-punto ruolo-' + (t.ruolo || 'abilita') + '">' + esc(ruolo.breve) + '</span>' + (funz ? '<div class="tenue piccolo">Funzione: ' + esc(funz.toLowerCase()) + '</div>' : '') + '</td>' +
             '<td>' + esc(tipo.nome) + parametriBrevi(t.metodo) + '<div class="tenue piccolo">versione ' + t.metodo.versione + '</div></td>' +
             '<td>' + esc(tipo.strumentoNome) + '</td>' +
             '<td class="piccolo">' + esc(M.descriviCriterio(t.metodo.criterio, t.metodo.tipo)) + '</td>' +
@@ -332,30 +342,82 @@
 
   function modificaTarget(pr, t) {
     var nuovo = !t;
+    var ruoloIniziale = pr.area === 'ridurre' ? 'problema' : 'abilita';
     var bozza = t ? JSON.parse(JSON.stringify(t)) : {
-      id: M.nuovoId('tg'), nome: '', direzione: pr.area === 'ridurre' ? 'ridurre' : 'aumentare',
-      definizione: { include: '', esclude: '', esempi: '' },
+      id: M.nuovoId('tg'), nome: '', direzione: pr.area === 'ridurre' ? 'ridurre' : 'aumentare', ruolo: ruoloIniziale,
+      definizione: { include: '', esclude: '', esempi: '', inizio: '', fine: '' },
       metodo: { id: M.nuovoId('me'), tipo: pr.area === 'ridurre' ? 'frequenza' : 'dtt', versione: 1, parametri: JSON.parse(JSON.stringify(M.TIPI[pr.area === 'ridurre' ? 'frequenza' : 'dtt'].parametri)), criterio: null }
     };
+    bozza.ruolo = bozza.ruolo || (bozza.direzione === 'ridurre' ? 'problema' : 'abilita');
     var c = bozza.metodo.criterio;
+    var def = bozza.definizione;
+    var funz = bozza.funzione || { ipotesi: 'da_definire', fonti: [], certezza: 'ipotesi', note: '' };
+    var ins = bozza.insegnamento || { formato: bozza.metodo.tipo === 'task_analysis' ? 'catena_totale' : 'dtt', istruzione: '', materiali: '', prompt: { strategia: 'meno_intrusivo', ritardoSec: 0, sfumatura: '' }, correzione: 'ripresenta_prompt', rinforzoDifferenziale: true };
+    var gen = bozza.generalizzazione || { persone: [], luoghi: [], materiali: [] };
+    var problemi = pr.target.filter(function (x) { return x.ruolo === 'problema' && x.id !== bozza.id; });
+    var sel = function (id, mappa, v) {
+      return '<select id="' + id + '">' + Object.keys(mappa).map(function (k) {
+        var n = typeof mappa[k] === 'string' ? mappa[k] : mappa[k].nome;
+        return '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + esc(n) + '</option>';
+      }).join('') + '</select>';
+    };
     var html =
       '<div class="modulo">' +
         '<div class="campi-riga">' +
           '<div class="campo largo"><label for="t-nome">Nome del target</label><input id="t-nome" type="text" required value="' + esc(bozza.nome) + '" placeholder="Es. Chiede una pausa"></div>' +
-          '<div class="campo"><label for="t-direzione">Obiettivo</label><select id="t-direzione">' +
-            '<option value="aumentare"' + (bozza.direzione === 'aumentare' ? ' selected' : '') + '>Da aumentare</option>' +
-            '<option value="ridurre"' + (bozza.direzione === 'ridurre' ? ' selected' : '') + '>Da ridurre</option></select></div>' +
+          '<div class="campo"><label for="t-ruolo">Ruolo nel piano</label>' + sel('t-ruolo', P.RUOLI, bozza.ruolo) + '</div>' +
         '</div>' +
+        '<p class="aiuto piccolo" id="t-ruolo-aiuto"></p>' +
+        '<fieldset data-per="problema"><legend>Ipotesi di funzione</legend>' +
+          '<div class="campi-riga">' +
+            '<div class="campo"><label for="t-funzione">Funzione</label>' + sel('t-funzione', P.FUNZIONI, funz.ipotesi) + '</div>' +
+            '<div class="campo"><label for="t-certezza">Certezza</label>' + sel('t-certezza', P.CERTEZZA, funz.certezza) + '</div>' +
+          '</div>' +
+          '<div class="campo"><span class="etichetta">Come è stata valutata</span><div class="spunte">' + Object.keys(P.FONTI_VALUTAZIONE).map(function (k) {
+            return '<label class="spunta piccolo"><input type="checkbox" name="t-fonti" value="' + k + '"' + ((funz.fonti || []).indexOf(k) !== -1 ? ' checked' : '') + '> ' + esc(P.FONTI_VALUTAZIONE[k]) + '</label>';
+          }).join('') + '</div></div>' +
+          '<div class="campo"><label for="t-funz-note">Dati a sostegno</label><textarea id="t-funz-note" placeholder="Es. sintesi delle schede ABC o dell’analisi funzionale">' + esc(funz.note || '') + '</textarea></div>' +
+        '</fieldset>' +
+        '<div class="campo" data-per="sostitutivo"><label for="t-sostituisce">Sostituisce il comportamento problema</label><select id="t-sostituisce"><option value="">Nessuno</option>' +
+          problemi.map(function (x) { return '<option value="' + x.id + '"' + (bozza.sostituisce === x.id ? ' selected' : '') + '>' + esc(x.nome) + '</option>'; }).join('') +
+          '</select><span class="aiuto">Il sostitutivo deve produrre lo stesso rinforzatore del problema, con meno sforzo.</span></div>' +
         '<fieldset><legend>Definizione operativa</legend>' +
-          '<div class="campo"><label for="t-include">Cosa conta</label><textarea id="t-include">' + esc(bozza.definizione.include) + '</textarea></div>' +
-          '<div class="campo"><label for="t-esclude">Cosa non conta</label><textarea id="t-esclude">' + esc(bozza.definizione.esclude) + '</textarea></div>' +
-          '<div class="campo"><label for="t-esempi">Esempi</label><input id="t-esempi" type="text" value="' + esc(bozza.definizione.esempi) + '"></div>' +
+          '<div class="campo"><label for="t-include">Cosa conta</label><textarea id="t-include">' + esc(def.include) + '</textarea></div>' +
+          '<div class="campo"><label for="t-esclude">Cosa non conta</label><textarea id="t-esclude">' + esc(def.esclude) + '</textarea></div>' +
+          '<div class="campi-riga">' +
+            '<div class="campo"><label for="t-inizio">Quando inizia</label><input id="t-inizio" type="text" value="' + esc(def.inizio || '') + '"></div>' +
+            '<div class="campo"><label for="t-fine">Quando finisce</label><input id="t-fine" type="text" value="' + esc(def.fine || '') + '"></div>' +
+          '</div>' +
+          '<div class="campo"><label for="t-esempi">Esempi</label><input id="t-esempi" type="text" value="' + esc(def.esempi) + '"></div>' +
+        '</fieldset>' +
+        '<fieldset data-per="abilita sostitutivo"><legend>Procedura di insegnamento</legend>' +
+          '<div class="campi-riga">' +
+            '<div class="campo"><label for="t-formato">Formato</label>' + sel('t-formato', P.FORMATI, ins.formato) + '</div>' +
+            '<div class="campo"><label for="t-correzione">Correzione dell’errore</label>' + sel('t-correzione', P.CORREZIONI, ins.correzione) + '</div>' +
+          '</div>' +
+          '<div class="campo"><label for="t-istruzione">Istruzione o occasione (SD)</label><input id="t-istruzione" type="text" value="' + esc(ins.istruzione || '') + '" placeholder="Es. “Fai così” più il modello"></div>' +
+          '<div class="campo"><label for="t-materiali">Materiali</label><input id="t-materiali" type="text" value="' + esc(ins.materiali || '') + '"></div>' +
+          '<div class="campi-riga">' +
+            '<div class="campo largo"><label for="t-strategia">Prompt e sfumatura</label>' + sel('t-strategia', P.STRATEGIE_PROMPT, ins.prompt.strategia) + '</div>' +
+            '<div class="campo"><label for="t-ritardo">Ritardo del prompt (s)</label><input id="t-ritardo" type="number" min="0" value="' + (ins.prompt.ritardoSec || 0) + '"></div>' +
+          '</div>' +
+          '<div class="campo"><label for="t-sfumatura">Quando si riduce il prompt</label><input id="t-sfumatura" type="text" value="' + esc(ins.prompt.sfumatura || '') + '"></div>' +
+          '<label class="spunta piccolo"><input id="t-diff" type="checkbox"' + (ins.rinforzoDifferenziale ? ' checked' : '') + '> Rinforzo più forte per le risposte indipendenti che per quelle con prompt</label>' +
+        '</fieldset>' +
+        '<fieldset><legend>Obiettivo</legend>' +
+          '<div class="campo"><label for="t-condizione">In quale condizione</label><input id="t-condizione" type="text" value="' + esc(bozza.obiettivo && bozza.obiettivo.condizione || '') + '" placeholder="Es. durante il lavoro al tavolo, con l’istruzione…"></div>' +
+          '<p class="piccolo obiettivo" id="t-obiettivo"></p>' +
         '</fieldset>' +
         '<fieldset><legend>Metodo di misura</legend>' +
-          '<div class="campo"><label for="t-tipo">Tipo di misura</label><select id="t-tipo">' +
+          '<div class="campi-riga">' +
+            '<div class="campo largo"><label for="t-tipo">Tipo di misura</label><select id="t-tipo">' +
             Object.keys(M.TIPI).map(function (k) {
               return '<option value="' + k + '"' + (k === bozza.metodo.tipo ? ' selected' : '') + '>' + esc(M.TIPI[k].nome) + '</option>';
             }).join('') + '</select><span class="aiuto" id="t-tipo-aiuto"></span></div>' +
+            '<div class="campo"><label for="t-direzione">Il valore deve</label><select id="t-direzione">' +
+              '<option value="aumentare"' + (bozza.direzione === 'aumentare' ? ' selected' : '') + '>Aumentare</option>' +
+              '<option value="ridurre"' + (bozza.direzione === 'ridurre' ? ' selected' : '') + '>Diminuire</option></select></div>' +
+          '</div>' +
           '<div id="t-parametri"></div>' +
         '</fieldset>' +
         '<fieldset><legend>Criterio di padronanza</legend>' +
@@ -366,8 +428,37 @@
             '<div class="campo"><label for="t-sessioni">Sessioni consecutive</label><input id="t-sessioni" type="number" min="1" max="10" value="' + (c ? c.sessioni : 3) + '"></div>' +
           '</div>' +
         '</fieldset>' +
+        '<fieldset data-per="abilita sostitutivo problema"><legend>Generalizzazione</legend>' +
+          '<div class="campo"><label for="t-g-persone">Persone</label><input id="t-g-persone" type="text" value="' + esc((gen.persone || []).join(', ')) + '" placeholder="Separate da virgola"></div>' +
+          '<div class="campi-riga">' +
+            '<div class="campo"><label for="t-g-luoghi">Luoghi</label><input id="t-g-luoghi" type="text" value="' + esc((gen.luoghi || []).join(', ')) + '"></div>' +
+            '<div class="campo"><label for="t-g-materiali">Materiali</label><input id="t-g-materiali" type="text" value="' + esc((gen.materiali || []).join(', ')) + '"></div>' +
+          '</div>' +
+        '</fieldset>' +
         (nuovo ? '' : '<p class="tenue piccolo">Se cambi il tipo o i parametri della misura, il metodo passa alla versione ' + (bozza.metodo.versione + 1) + '. Le sessioni già registrate restano legate alla versione con cui sono state raccolte.</p>') +
       '</div>';
+
+    var AIUTO_RUOLO = {
+      problema: 'Il comportamento da ridurre. Le conseguenze si progettano nella scheda Piano di intervento, in base alla funzione.',
+      sostitutivo: 'Il comportamento che prende il posto del problema e ne ottiene lo stesso rinforzatore (es. la richiesta nella FCT).',
+      abilita: 'Un’abilità da insegnare, con la sua procedura di insegnamento.',
+      valutazione: 'Uno strumento di osservazione per formulare l’ipotesi di funzione (es. ABC): non riceve conseguenze programmate.'
+    };
+    function aggiornaRuolo(form, cambiato) {
+      var ruolo = form.querySelector('#t-ruolo').value;
+      form.querySelector('#t-ruolo-aiuto').textContent = AIUTO_RUOLO[ruolo];
+      form.querySelectorAll('[data-per]').forEach(function (el) {
+        el.hidden = el.getAttribute('data-per').split(' ').indexOf(ruolo) === -1;
+      });
+      if (cambiato && P.RUOLI[ruolo].direzione) form.querySelector('#t-direzione').value = P.RUOLI[ruolo].direzione;
+    }
+    function aggiornaObiettivo(form) {
+      var crit = form.querySelector('#t-usa-criterio').checked
+        ? M.descriviCriterio({ soglia: +form.querySelector('#t-soglia').value || 0, verso: form.querySelector('#t-verso').value, sessioni: +form.querySelector('#t-sessioni').value || 3 }, form.querySelector('#t-tipo').value)
+        : '';
+      var testo = P.obiettivo({ nome: form.querySelector('#t-nome').value || 'target', obiettivo: { condizione: form.querySelector('#t-condizione').value } }, crit);
+      form.querySelector('#t-obiettivo').textContent = testo ? 'Si legge così: ' + testo : '';
+    }
 
     function parametriHtml(tipo, p) {
       switch (tipo) {
@@ -406,9 +497,12 @@
     ], {
       larga: true,
       dopo: function (form) {
-        aggiornaTipo(form); aggiornaCriterio(form);
+        aggiornaTipo(form); aggiornaCriterio(form); aggiornaRuolo(form, false); aggiornaObiettivo(form);
         form.querySelector('#t-tipo').addEventListener('change', function () { aggiornaTipo(form); });
         form.querySelector('#t-usa-criterio').addEventListener('change', function () { aggiornaCriterio(form); });
+        form.querySelector('#t-ruolo').addEventListener('change', function () { aggiornaRuolo(form, true); });
+        form.addEventListener('input', function () { aggiornaObiettivo(form); });
+        form.addEventListener('change', function () { aggiornaObiettivo(form); });
       },
       valida: function (form) {
         var nome = form.querySelector('#t-nome');
@@ -427,9 +521,30 @@
       if (tipo === 'abc') parametri = { antecedenti: linee(q('#p-a')), comportamenti: linee(q('#p-b')), conseguenze: linee(q('#p-c')) };
 
       var cambioMisura = tipo !== bozza.metodo.tipo || JSON.stringify(parametri) !== JSON.stringify(bozza.metodo.parametri);
+      var virgole = function (txt) { return txt.split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
       bozza.nome = q('#t-nome').trim();
       bozza.direzione = q('#t-direzione');
-      bozza.definizione = { include: q('#t-include'), esclude: q('#t-esclude'), esempi: q('#t-esempi') };
+      bozza.ruolo = q('#t-ruolo');
+      bozza.definizione = { include: q('#t-include'), esclude: q('#t-esclude'), esempi: q('#t-esempi'), inizio: q('#t-inizio'), fine: q('#t-fine') };
+      bozza.obiettivo = { condizione: q('#t-condizione').trim() };
+      delete bozza.funzione; delete bozza.sostituisce; delete bozza.insegnamento; delete bozza.generalizzazione;
+      if (bozza.ruolo === 'problema') {
+        bozza.funzione = {
+          ipotesi: q('#t-funzione'), certezza: q('#t-certezza'), note: q('#t-funz-note').trim(),
+          fonti: Array.prototype.map.call(f.querySelectorAll('input[name="t-fonti"]:checked'), function (x) { return x.value; })
+        };
+      }
+      if (bozza.ruolo === 'sostitutivo' && q('#t-sostituisce')) bozza.sostituisce = q('#t-sostituisce');
+      if (bozza.ruolo === 'abilita' || bozza.ruolo === 'sostitutivo') {
+        bozza.insegnamento = {
+          formato: q('#t-formato'), istruzione: q('#t-istruzione').trim(), materiali: q('#t-materiali').trim(),
+          prompt: { strategia: q('#t-strategia'), ritardoSec: +q('#t-ritardo') || 0, sfumatura: q('#t-sfumatura').trim() },
+          correzione: q('#t-correzione'), rinforzoDifferenziale: f.querySelector('#t-diff').checked
+        };
+      }
+      if (bozza.ruolo !== 'valutazione') {
+        bozza.generalizzazione = { persone: virgole(q('#t-g-persone')), luoghi: virgole(q('#t-g-luoghi')), materiali: virgole(q('#t-g-materiali')) };
+      }
       if (!nuovo && cambioMisura) {
         bozza.metodo.storico = (bozza.metodo.storico || []).concat([{
           versione: bozza.metodo.versione, tipo: bozza.metodo.tipo, parametri: bozza.metodo.parametri
@@ -459,7 +574,7 @@
     var html = '<div class="modulo">' +
       '<div class="campo"><label for="p-nome">Nome del programma</label><input id="p-nome" type="text" required placeholder="Es. Comunicazione funzionale"></div>' +
       '<div class="campo"><label for="p-area">Area</label><select id="p-area"><option value="insegnare">Abilità da insegnare</option><option value="ridurre">Comportamento da ridurre</option></select></div>' +
-      '<p class="tenue piccolo">Il programma parte in baseline da oggi. Poi aggiungi i target.</p></div>';
+      '<p class="tenue piccolo">Il programma parte in baseline da oggi. Poi aggiungi i target e, nella scheda Piano di intervento, le fasi con le conseguenze.</p></div>';
     U.finestra('Nuovo programma', html, [
       { testo: 'Annulla', valore: null },
       { testo: 'Crea programma', classe: 'btn-primario', valore: true, invio: true }
@@ -469,8 +584,10 @@
       if (!r) return;
       var pr = {
         id: M.nuovoId('pr'), nome: r.form.querySelector('#p-nome').value.trim(), area: r.form.querySelector('#p-area').value,
-        stato: 'attivo', fasi: [{ id: M.nuovoId('fa'), tipo: 'baseline', inizio: BR.datiFinti.dataISO(new Date()), nota: '' }], target: []
+        stato: 'attivo', target: [],
+        piano: { modello: null, fasi: [{ id: M.nuovoId('pf'), tipo: 'baseline', nome: 'Baseline', descrizione: '', antecedenti: [], contingenze: [], criteri: {} }] }
       };
+      pr.fasi = [{ id: M.nuovoId('fa'), tipo: 'baseline', inizio: BR.datiFinti.dataISO(new Date()), nota: '', pianoId: pr.piano.fasi[0].id }];
       s.programmi.push(pr);
       salva();
       modificaTarget(pr, null);
@@ -488,26 +605,43 @@
     });
   }
 
+  // Valori: "p:<id>" per una fase del piano, "t:<tipo>" per una fase libera.
   function cambiaFase(pr, proposta) {
-    var attuale = A.faseCorrente(pr);
-    var opzioni = Object.keys(M.FASI).filter(function (k) { return k !== attuale; });
-    var scelta = proposta && opzioni.indexOf(proposta) !== -1 ? proposta : opzioni[0];
-    var html = '<div class="modulo"><p>Fase attuale di “' + esc(pr.nome) + '”: <strong>' + esc(M.FASI[attuale]) + '</strong>.</p>' +
-      '<div class="campo"><label for="f-tipo">Nuova fase</label><select id="f-tipo">' + opzioni.map(function (k) {
-        return '<option value="' + k + '"' + (k === scelta ? ' selected' : '') + '>' + M.FASI[k] + '</option>';
-      }).join('') + '</select></div>' +
+    var corrente = A.voceCorrente(pr);
+    var prossima = P.prossimaFase(pr);
+    var pianificate = (pr.piano && pr.piano.fasi || []).filter(function (f) { return !corrente || corrente.pianoId !== f.id; });
+    var scelta = proposta || (prossima ? 'p:' + prossima.id : 't:' + Object.keys(M.FASI).filter(function (k) { return k !== A.faseCorrente(pr); })[0]);
+    var opt = function (v, testo) { return '<option value="' + v + '"' + (v === scelta ? ' selected' : '') + '>' + esc(testo) + '</option>'; };
+    var html = '<div class="modulo"><p>Fase attuale di “' + esc(pr.nome) + '”: <strong>' + esc(A.nomeFaseCorrente(pr)) + '</strong>.</p>' +
+      '<div class="campo"><label for="f-tipo">Nuova fase</label><select id="f-tipo">' +
+        (pianificate.length ? '<optgroup label="Fasi del piano">' + pianificate.map(function (f) { return opt('p:' + f.id, f.nome); }).join('') + '</optgroup>' : '') +
+        '<optgroup label="Fase non pianificata">' + Object.keys(M.FASI).map(function (k) { return opt('t:' + k, M.FASI[k]); }).join('') + '</optgroup>' +
+      '</select></div>' +
       '<div class="campo"><label for="f-nota">Nota sul cambio</label><input id="f-nota" type="text" placeholder="Es. criterio raggiunto il ' + U.data(Date.now()) + '"></div>' +
-      '<p class="tenue piccolo">Parte da oggi. Sui grafici compare una linea tratteggiata prima della prossima sessione.</p></div>';
+      '<p class="tenue piccolo">Parte da oggi. Sui grafici compare una linea tratteggiata prima della prossima sessione, e il telefono mostra le conseguenze della nuova fase.</p></div>';
     U.finestra('Cambia fase', html, [
       { testo: 'Annulla', valore: null },
       { testo: 'Cambia fase', classe: 'btn-primario', valore: true, invio: true }
     ]).then(function (r) {
       if (!r) return;
-      var tipo = r.form.querySelector('#f-tipo').value;
-      pr.fasi.push({ id: M.nuovoId('fa'), tipo: tipo, inizio: BR.datiFinti.dataISO(new Date()), nota: r.form.querySelector('#f-nota').value });
-      salva();
-      U.toast('“' + pr.nome + '” passa a ' + M.FASI[tipo].toLowerCase());
+      var v = r.form.querySelector('#f-tipo').value;
+      avviaFase(pr, v, r.form.querySelector('#f-nota').value);
     });
+  }
+
+  function avviaFase(pr, valore, nota) {
+    var voce = { id: M.nuovoId('fa'), inizio: BR.datiFinti.dataISO(new Date()), nota: nota || '' };
+    if (valore.slice(0, 2) === 'p:') {
+      var f = P.fasePianificata(pr, valore.slice(2));
+      if (!f) return;
+      voce.tipo = f.tipo;
+      voce.pianoId = f.id;
+    } else {
+      voce.tipo = valore.slice(2);
+    }
+    pr.fasi.push(voce);
+    salva();
+    U.toast('“' + pr.nome + '” passa a ' + P.nomeFase(pr, voce));
   }
 
   function nuovoPaziente() {
@@ -569,6 +703,16 @@
       case 'modifica-programma': rinominaProgramma(pr); break;
       case 'cambia-fase': cambiaFase(pr, b.getAttribute('data-fase')); break;
       case 'nuovo-target': modificaTarget(pr, null); break;
+      case 'modello-piano': D.applicaModello(ctxPiano, pr); break;
+      case 'nuova-fase-piano': D.modificaFase(ctxPiano, pr, null); break;
+      case 'modifica-fase-piano': D.modificaFase(ctxPiano, pr, P.fasePianificata(pr, b.getAttribute('data-id'))); break;
+      case 'avvia-fase-piano': {
+        var fp = P.fasePianificata(pr, b.getAttribute('data-id'));
+        if (!fp) return;
+        U.conferma('Avviare “' + fp.nome + '”?', 'La fase parte da oggi: grafici e telefono useranno le sue conseguenze programmate.', 'Avvia la fase', 'btn-primario')
+          .then(function (ok) { if (ok) avviaFase(pr, 'p:' + fp.id, 'Fase del piano'); });
+        break;
+      }
       case 'modifica-target':
         modificaTarget(pr, pr.target.find(function (t) { return t.id === b.getAttribute('data-id'); }));
         break;

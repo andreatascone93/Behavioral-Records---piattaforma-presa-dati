@@ -75,7 +75,7 @@
     abc: {
       nome: 'ABC', strumento: 'abc', strumentoNome: 'Scheda ABC',
       unita: 'episodi', decimali: 0,
-      descrizione: 'Analisi funzionale descrittiva',
+      descrizione: 'Osservazione descrittiva per l’ipotesi di funzione, non un intervento',
       parametri: {
         antecedenti: ['Richiesta di compito', 'Attenzione negata', 'Transizione', 'Oggetto tolto'],
         comportamenti: [],
@@ -87,8 +87,10 @@
   var FASI = {
     baseline: 'Baseline',
     intervento: 'Intervento',
+    assottigliamento: 'Assottigliamento dello schema',
     mantenimento: 'Mantenimento',
-    generalizzazione: 'Generalizzazione'
+    generalizzazione: 'Generalizzazione',
+    follow_up: 'Follow-up'
   };
 
   // Toglie gli eventi annullati e gli stessi eventi "annulla".

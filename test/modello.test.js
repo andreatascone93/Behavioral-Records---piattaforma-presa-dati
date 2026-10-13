@@ -159,3 +159,61 @@ test('archivio: cambiando solo i parametri le sessioni vecchie usano la loro ver
   target.metodo.parametri = { intervalloSec: 15, osservazioneMin: 5 };
   assert.deepEqual(archivio.serie(stato, pz, programma, target, {}).map((p) => p.valore), prima);
 });
+
+const piano = require('../prototipo/js/piano.js');
+
+test('piano: descrizioni di schemi e conseguenze', () => {
+  assert.equal(piano.descriviSchema({ tipo: 'FR', valore: 3 }), 'FR 3');
+  assert.equal(piano.descriviSchema({ tipo: 'VI', valore: 120 }), 'VI 120 s');
+  assert.equal(piano.descriviSchema({ tipo: 'CRF', segnalato: { sdSec: 60, sdeltaSec: 30 } }), 'mult CRF/EXT (60 s con SD, 30 s con SΔ)');
+  const t = { a: { id: 'a', nome: 'Chiede una pausa' } };
+  const dra = { procedura: 'dra', schema: { tipo: 'CRF' }, rinforzatore: { descrizione: 'Pausa', qualita: 'alta' },
+    parametri: { alternativoId: 'a', problema: 'rinforzo', schemaProblema: { tipo: 'FR', valore: 2 } } };
+  assert.match(piano.descriviContingenza(dra, t), /“Chiede una pausa” con CRF · Pausa, alta preferenza; problema ancora rinforzato con FR 2/);
+  assert.equal(piano.schemiConcorrenti({ contingenze: [dra] }), true);
+  assert.equal(piano.schemiConcorrenti({ contingenze: [{ ...dra, parametri: { ...dra.parametri, problema: 'estinzione' } }] }), false);
+  assert.equal(piano.descriviContingenza({ procedura: 'dro', parametri: { variante: 'momentaneo_fisso', intervalloSec: 30 } }), 'Momentaneo, fisso 30 s');
+});
+
+test('piano: avvisi su funzione, sostitutivo, estinzione e procedure restrittive', () => {
+  const pr = {
+    target: [{ id: 'p', nome: 'Colpire', ruolo: 'problema', funzione: { ipotesi: 'attenzione' } }],
+    piano: { fasi: [{ id: 'f1', nome: 'Intervento', tipo: 'intervento', contingenze: [
+      { procedura: 'estinzione', targetId: 'p', parametri: { variante: 'fuga' } },
+      { procedura: 'timeout', targetId: 'p', parametri: { variante: 'non_esclusionario', durataSec: 60 } }
+    ] }] }
+  };
+  const testi = piano.controlla(pr).map((a) => a.testo).join('\n');
+  assert.match(testi, /non insegna un comportamento sostitutivo/);
+  assert.match(testi, /la funzione ipotizzata è attenzione/);
+  assert.match(testi, /procedura restrittiva/);
+  pr.piano.fasi[0].contingenze[1].motivazione = 'DRA ed EXT senza effetto per 10 sessioni';
+  assert.doesNotMatch(piano.controlla(pr).map((a) => a.testo).join('\n'), /procedura restrittiva/);
+});
+
+test('piano: il modello FCT crea baseline, FCT, assottigliamento e mantenimento', () => {
+  const p = { id: 'p', nome: 'Colpire' }, a = { id: 'a', nome: 'Chiede una pausa' };
+  let n = 0;
+  const fasi = piano.creaFasi('fct', p, a, 'fuga', (x) => x + n++);
+  assert.deepEqual(fasi.map((f) => f.tipo), ['baseline', 'intervento', 'assottigliamento', 'mantenimento']);
+  const fct = fasi[1].contingenze;
+  assert.equal(fct[0].parametri.alternativoId, 'a');
+  assert.equal(fct[0].rinforzatore.categoria, 'pausa');
+  assert.equal(fct[1].parametri.variante, 'fuga');
+});
+
+test('archivio: due fasi dello stesso tipo restano distinte e il criterio vale nella fase in corso', () => {
+  const stato = datiFinti.genera('2026-10-13T12:00:00');
+  const pz = stato.config.soggetti[0];
+  const { programma, target } = archivio.targetDi(pz).find((x) => x.target.nome === 'Chiede una pausa');
+  const prima = archivio.serie(stato, pz, programma, target, {});
+  assert.equal(archivio.statoCriterio(programma, target, prima).raggiunto, true);
+  // Nuova fase di assottigliamento: nessuna sessione ancora, il criterio riparte.
+  const prossima = piano.prossimaFase(programma);
+  assert.equal(prossima.tipo, 'assottigliamento');
+  programma.fasi.push({ id: 'fa_nuova', tipo: prossima.tipo, inizio: '2026-10-13', pianoId: prossima.id });
+  assert.equal(archivio.statoCriterio(programma, target, prima).consecutive, 0);
+  assert.equal(archivio.nomeFaseCorrente(programma), 'Assottigliamento: schema multiplo');
+  const s = archivio.apriSessione(stato, pz);
+  assert.equal(s.fasiId[programma.id], 'fa_nuova');
+});

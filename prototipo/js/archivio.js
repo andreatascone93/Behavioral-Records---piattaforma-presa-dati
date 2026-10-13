@@ -7,7 +7,7 @@
   'use strict';
 
   var M = root.BR.modello;
-  var CHIAVE = 'behavioral-records-prototipo-v1';
+  var CHIAVE = 'behavioral-records-prototipo-v2';
   var memoria = null; // copia di riserva se localStorage non è disponibile
 
   function leggi() {
@@ -25,7 +25,7 @@
 
   function carica() {
     var s = leggi();
-    if (!s || s.versione !== 1) {
+    if (!s || s.versione !== 2) {
       s = root.BR.datiFinti.genera();
       salva(s);
     }
@@ -68,20 +68,37 @@
     return targetDi(sog).find(function (x) { return x.target.id === targetId; }) || null;
   }
 
-  function faseAllaData(programma, ms) {
-    var giorno = new Date(ms);
-    var iso = root.BR.datiFinti.dataISO(giorno);
-    var fase = programma.fasi[0];
+  // Le fasi svolte sono voci { id, tipo, inizio, nota, pianoId }: due fasi
+  // dello stesso tipo (es. due passi di assottigliamento) restano distinte.
+  function voceAllaData(programma, ms) {
+    var iso = root.BR.datiFinti.dataISO(new Date(ms));
+    var fase = programma.fasi[0] || null;
     programma.fasi.forEach(function (f) { if (f.inizio <= iso) fase = f; });
-    return fase ? fase.tipo : 'baseline';
+    return fase;
+  }
+
+  function voceDiSessione(programma, sessione) {
+    var id = sessione.fasiId && sessione.fasiId[programma.id];
+    var voce = id ? programma.fasi.find(function (f) { return f.id === id; }) : null;
+    return voce || voceAllaData(programma, sessione.inizio);
+  }
+
+  function voceCorrente(programma) {
+    return programma.fasi.length ? programma.fasi[programma.fasi.length - 1] : null;
   }
 
   function faseDiSessione(programma, sessione) {
-    return (sessione.fasi && sessione.fasi[programma.id]) || faseAllaData(programma, sessione.inizio);
+    var voce = voceDiSessione(programma, sessione);
+    return voce ? voce.tipo : 'baseline';
   }
 
   function faseCorrente(programma) {
-    return programma.fasi.length ? programma.fasi[programma.fasi.length - 1].tipo : 'baseline';
+    var voce = voceCorrente(programma);
+    return voce ? voce.tipo : 'baseline';
+  }
+
+  function nomeFaseCorrente(programma) {
+    return root.BR.piano.nomeFase(programma, voceCorrente(programma));
   }
 
   function sessioniDi(stato, soggettoId, opzioni) {
@@ -125,7 +142,12 @@
       if (!ev.length && !previsto) return;
       var r = M.calcola(metodo, ev, s);
       if (r.valore == null && !ev.length) return;
-      out.push({ sessione: s, valore: r.valore, dettagli: r.dettagli, fase: faseDiSessione(programma, s) });
+      var voce = voceDiSessione(programma, s);
+      out.push({
+        sessione: s, valore: r.valore, dettagli: r.dettagli,
+        fase: voce ? voce.tipo : 'baseline', faseId: voce ? voce.id : null,
+        faseNome: root.BR.piano.nomeFase(programma, voce)
+      });
     });
     return out;
   }
@@ -136,11 +158,17 @@
     return vecchio ? { id: metodo.id, tipo: vecchio.tipo, versione: vecchio.versione, parametri: vecchio.parametri, criterio: metodo.criterio } : metodo;
   }
 
+  // Criterio nella fase in corso: quello della fase pianificata, se lo
+  // prevede, altrimenti il criterio di padronanza del target.
+  function criterioCorrente(programma, target) {
+    return root.BR.piano.criterioPerFase(target, root.BR.piano.faseInCorso(programma));
+  }
+
   function statoCriterio(programma, target, punti) {
-    var fase = faseCorrente(programma);
-    var valori = punti.filter(function (p) { return p.fase === fase; }).map(function (p) { return p.valore; });
-    var c = M.verificaCriterio(target.metodo.criterio, valori);
-    if (c) c.fase = fase;
+    var voce = voceCorrente(programma);
+    var valori = punti.filter(function (p) { return voce ? p.faseId === voce.id : true; }).map(function (p) { return p.valore; });
+    var c = M.verificaCriterio(criterioCorrente(programma, target), valori);
+    if (c) c.fase = voce ? voce.tipo : 'baseline';
     return c;
   }
 
@@ -178,10 +206,12 @@
       id: M.nuovoId('se'), soggettoId: sog.id, scheduleId: sog.schedule.id,
       operatoreId: stato.operatoreCorrente, inizio: Date.now(), fine: null,
       stato: 'aperta', sincronizzata: false, setting: sog.schedule.setting,
-      fasi: {}, versioniMetodi: {}, nota: ''
+      fasi: {}, fasiId: {}, versioniMetodi: {}, nota: ''
     };
     sog.programmi.forEach(function (pr) {
-      s.fasi[pr.id] = faseCorrente(pr);
+      var voce = voceCorrente(pr);
+      s.fasi[pr.id] = voce ? voce.tipo : 'baseline';
+      if (voce) s.fasiId[pr.id] = voce.id;
       pr.target.forEach(function (t) { s.versioniMetodi[t.metodo.id] = t.metodo.versione; });
     });
     stato.sessioni.push(s);
@@ -218,7 +248,8 @@
     CHIAVE: CHIAVE,
     carica: carica, salva: salva, ripristina: ripristina, ascolta: ascolta,
     soggetto: soggetto, operatore: operatore, targetDi: targetDi, trovaTarget: trovaTarget,
-    faseDiSessione: faseDiSessione, faseCorrente: faseCorrente,
+    faseDiSessione: faseDiSessione, faseCorrente: faseCorrente, voceDiSessione: voceDiSessione,
+    voceCorrente: voceCorrente, nomeFaseCorrente: nomeFaseCorrente, criterioCorrente: criterioCorrente,
     sessioniDi: sessioniDi, eventiDi: eventiDi, serie: serie, statoCriterio: statoCriterio,
     online: online, inAttesa: inAttesa, sincronizza: sincronizza,
     apriSessione: apriSessione, registra: registra, annullaUltimo: annullaUltimo, chiudiSessione: chiudiSessione

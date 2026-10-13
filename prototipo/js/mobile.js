@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui;
+  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui;
   var esc = U.esc;
 
   var stato = A.carica();
@@ -122,12 +122,29 @@
     }[tipo.strumento])(sess, t);
     var ev = evValidi(sess, t);
     return '<section class="strumento" id="s-' + t.id + '">' +
-      '<div class="strumento-testa"><div><h3>' + esc(t.nome) + '</h3><span class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(M.FASI[A.faseDiSessione(pr, sess)]) + '</span></div>' +
+      '<div class="strumento-testa"><div><h3>' + esc(t.nome) + '</h3><span class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(P.nomeFase(pr, A.voceDiSessione(pr, sess))) + '</span></div>' +
       (ev.length ? '<button class="btn btn-piatto piccolo annulla" type="button" data-azione="annulla" data-id="' + t.id + '">Annulla ultimo</button>' : '') + '</div>' +
+      promemoria(sess, pr, t) +
       corpo +
       (t.definizione && t.definizione.include ? '<details class="definizione"><summary>Definizione operativa</summary><p>' + esc(t.definizione.include) + '</p>' +
         (t.definizione.esclude ? '<p class="tenue">Non conta: ' + esc(t.definizione.esclude) + '</p>' : '') + '</details>' : '') +
       '</section>';
+  }
+
+  // Cosa fare dopo il comportamento, secondo la fase del piano in corso.
+  function promemoria(sess, pr, t) {
+    var voce = A.voceDiSessione(pr, sess);
+    var fase = voce && voce.pianoId ? P.fasePianificata(pr, voce.pianoId) : null;
+    if (!fase) return '';
+    var tm = {};
+    pr.target.forEach(function (x) { tm[x.id] = x; });
+    var righe = (fase.contingenze || []).filter(function (c) {
+      return c.targetId === t.id || (c.parametri && c.parametri.alternativoId === t.id);
+    }).map(function (c) {
+      return '<li><strong>' + esc(P.siglaContingenza(c)) + '</strong> ' + esc(P.descriviContingenza(c, tm)) + '</li>';
+    });
+    if (!righe.length) return '';
+    return '<ul class="promemoria" aria-label="Conseguenze programmate">' + righe.join('') + '</ul>';
   }
 
   function valoreOra(sess, t) {
