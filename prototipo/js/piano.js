@@ -579,6 +579,54 @@
     }
   };
 
+  // ---- Valutazione delle preferenze -------------------------------------------
+  // Ogni metodo dice cosa misura il numero inserito per ogni stimolo e in che
+  // verso si ordina (per l'MSWO il rango medio: 1 = scelto per primo).
+  var METODI_PREFERENZA = {
+    paired: { nome: 'Scelta a coppie', fonte: 'Fisher et al., 1992', misura: '% di scelte', massimo: 100, crescente: false,
+      aiuto: 'Ogni stimolo è presentato in coppia con ognuno degli altri; conta quante volte è scelto sul totale delle volte in cui è presentato.' },
+    mswo: { nome: 'Scelta multipla senza sostituzione (MSWO)', fonte: 'DeLeon & Iwata, 1996', misura: 'rango medio', crescente: true,
+      aiuto: 'Tutti gli stimoli insieme; quello scelto si toglie e si ripresenta il resto. Inserisci il rango medio su 3–5 somministrazioni (1 = scelto per primo).' },
+    singolo: { nome: 'Stimolo singolo', fonte: 'Pace et al., 1985', misura: '% di prove con approccio', massimo: 100, crescente: false,
+      aiuto: 'Uno stimolo per volta; conta in quante prove la persona si avvicina o lo prende. Utile quando la scelta tra due è difficile.' },
+    free_operant: { nome: 'Operante libero', fonte: 'Roane et al., 1998', misura: '% del tempo di contatto', massimo: 100, crescente: false,
+      aiuto: 'Tutti gli stimoli disponibili per 5 minuti senza toglierli; misura il tempo con ciascuno. Riduce i comportamenti problema legati alla rimozione.' }
+  };
+
+  // Giorni dopo i quali una valutazione si considera da rifare.
+  var PREFERENZE_SCADENZA_GIORNI = 30;
+
+  // Stimoli ordinati dal più al meno preferito, con un livello indicativo
+  // (alta, media, bassa) in terzi della scala del metodo.
+  function classificaPreferenze(v) {
+    var m = METODI_PREFERENZA[v && v.metodo];
+    if (!m) return [];
+    var validi = (v.stimoli || []).filter(function (x) { return x && x.nome && isFinite(x.valore) && x.valore !== null && x.valore !== ''; });
+    var n = validi.length;
+    var ordinati = validi.slice().sort(function (a, b) { return m.crescente ? a.valore - b.valore : b.valore - a.valore; });
+    return ordinati.map(function (x, i) {
+      // Punteggio da 0 a 1, dove 1 = massima preferenza.
+      var p = m.crescente ? (n > 1 ? (n - x.valore) / (n - 1) : 1) : x.valore / m.massimo;
+      p = Math.max(0, Math.min(1, p));
+      return { nome: x.nome, valore: +x.valore, posizione: i + 1, punteggio: p, livello: p >= 2 / 3 ? 'alta' : p >= 1 / 3 ? 'media' : 'bassa' };
+    });
+  }
+
+  // Valutazione più recente di un soggetto (o null).
+  function ultimaPreferenza(soggetto) {
+    var el = (soggetto && soggetto.preferenze) || [];
+    return el.slice().sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; })[0] || null;
+  }
+
+  // Nomi suggeriti per i rinforzatori: gli stimoli della valutazione più
+  // recente in ordine di preferenza, e se la valutazione è da rifare.
+  function suggerimentiRinforzatori(soggetto, oggi) {
+    var v = ultimaPreferenza(soggetto);
+    if (!v) return { valutazione: null, stimoli: [], scaduta: false, giorni: null };
+    var giorni = Math.floor(((oggi ? new Date(oggi) : new Date()) - new Date(v.data)) / 86400000);
+    return { valutazione: v, stimoli: classificaPreferenze(v), scaduta: giorni > PREFERENZE_SCADENZA_GIORNI, giorni: giorni };
+  }
+
   // Fasi di un modello per i target scelti. idFn è facoltativo.
   function creaFasi(chiave, problema, alternativo, funzione, idFn) {
     generatoreId = idFn || null;
@@ -599,6 +647,8 @@
     obiettivo: obiettivo, fasePianificata: fasePianificata, nomeFase: nomeFase,
     prossimaFase: prossimaFase, faseInCorso: faseInCorso, criterioPerFase: criterioPerFase,
     fasePrecedente: fasePrecedente, valutaRegole: valutaRegole, descriviRitorno: descriviRitorno,
+    METODI_PREFERENZA: METODI_PREFERENZA, PREFERENZE_SCADENZA_GIORNI: PREFERENZE_SCADENZA_GIORNI,
+    classificaPreferenze: classificaPreferenze, ultimaPreferenza: ultimaPreferenza, suggerimentiRinforzatori: suggerimentiRinforzatori,
     controlla: controlla
   };
 

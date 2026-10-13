@@ -363,3 +363,21 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .riga-criterio { display: grid; gap: 0.4rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--griglia); }
 .proposta.ritorno { background: var(--critico-tenue); color: var(--critico); }
 .proposta.stallo { background: var(--attenzione-tenue); color: var(--attenzione); }
+
+/* Preferenze */
+.intro-riga { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.intro-riga .intro { margin: 0; }
+.avviso-pref { background: var(--attenzione-tenue); color: var(--attenzione); font-weight: 700; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; }
+.carta.preferenza:not(.ultima) { opacity: 0.8; }
+.classifica { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 8px; counter-reset: pos; }
+.classifica li { display: grid; grid-template-columns: 1.6rem minmax(8rem, 14rem) 1fr 3rem 4.5rem; align-items: center; gap: 10px; counter-increment: pos; }
+.classifica li::before { content: counter(pos); font-family: var(--f-dati); color: var(--testo-2); }
+.classifica .pref-barra { height: 10px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
+.classifica .pref-barra span { display: block; height: 100%; background: var(--penna); }
+.classifica .livello-media .pref-barra span { opacity: 0.6; }
+.classifica .livello-bassa .pref-barra span { opacity: 0.3; }
+.classifica .livello-alta .livello { background: var(--bene-tenue); color: var(--bene); }
+@media (max-width: 640px) {
+  .classifica li { grid-template-columns: 1.6rem 1fr auto; }
+  .classifica .pref-barra, .classifica .livello { display: none; }
+}

@@ -156,6 +156,8 @@
 
     // ---- Pazienti -------------------------------------------------------
     var soggetti = [];
+    function giorniPrima(n) { var d = new Date(oggi); d.setDate(d.getDate() - n); return dataISO(d); }
+    function stimoli(coppie) { return coppie.map(function (c) { return { nome: c[0], valore: c[1] }; }); }
     var piani = []; // { soggetto, sessioni: n, ora, operatori, durataMin }
 
     // PZ-014
@@ -213,7 +215,13 @@
       id: id('sg'), codice: 'PZ-014', iniziali: 'L.M.', annoNascita: 2018,
       note: 'Diagnosi ASD livello 2. Sedute in studio, 3 volte a settimana.',
       operatori: ['op_andrea', 'op_giulia'],
-      programmi: [p1aggr, p1aiuto]
+      programmi: [p1aggr, p1aiuto],
+      preferenze: [
+        { id: id('vp'), data: giorniPrima(60), metodo: 'mswo', operatore: 'op_andrea', note: 'Prima valutazione, 3 somministrazioni.',
+          stimoli: stimoli([['Tablet con video', 1.3], ['Bolle di sapone', 2], ['Macchinine', 3.3], ['Puzzle', 3.7], ['Libro sonoro', 4.7]]) },
+        { id: id('vp'), data: giorniPrima(12), metodo: 'paired', operatore: 'op_giulia', note: 'Le bolle superano il tablet rispetto a due mesi fa.',
+          stimoli: stimoli([['Bolle di sapone', 88], ['Tablet con video', 75], ['Macchinine', 50], ['Puzzle', 38], ['Libro sonoro', 12]]) }
+      ]
     });
     piani.push({ sessioni: 18, ora: 9, operatori: ['op_giulia', 'op_giulia', 'op_andrea'], durataMin: 30 });
 
@@ -289,7 +297,11 @@
       id: id('sg'), codice: 'PZ-022', iniziali: 'G.F.', annoNascita: 2016,
       note: 'Sedute a scuola con l’insegnante di sostegno presente.',
       operatori: ['op_andrea', 'op_marco'],
-      programmi: [p2classe, p2mani]
+      programmi: [p2classe, p2mani],
+      preferenze: [
+        { id: id('vp'), data: giorniPrima(45), metodo: 'free_operant', operatore: 'op_marco', note: 'In classe, 5 minuti durante l’intervallo.',
+          stimoli: stimoli([['Gioco con l’insegnante', 46], ['Adesivi', 24], ['Disegno', 18], ['Costruzioni', 8], ['Libro', 4]]) }
+      ]
     });
     piani.push({ sessioni: 18, ora: 11, operatori: ['op_marco'], durataMin: 30 });
 
@@ -352,7 +364,11 @@
       id: id('sg'), codice: 'PZ-031', iniziali: 'S.B.', annoNascita: 2019,
       note: 'Presa in carico da settembre. Sedute in studio.',
       operatori: ['op_andrea', 'op_giulia'],
-      programmi: [p3imit, p3stereo, p3nome]
+      programmi: [p3imit, p3stereo, p3nome],
+      preferenze: [
+        { id: id('vp'), data: giorniPrima(8), metodo: 'singolo', operatore: 'op_giulia', note: 'Scelta tra due ancora difficile: valutazione a stimolo singolo.',
+          stimoli: stimoli([['Trottola luminosa', 100], ['Musica dal telefono', 90], ['Solletico', 70], ['Palla morbida', 40], ['Crema sulle mani', 10]]) }
+      ]
     });
     piani.push({ sessioni: 12, ora: 15, operatori: ['op_giulia', 'op_andrea'], durataMin: 30 });
 

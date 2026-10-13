@@ -192,11 +192,22 @@
   function campiRinforzatore(r, base, rf, titolo) {
     var x = rf || {};
     return '<div class="sottogruppo"><span class="etichetta">' + esc(titolo || 'Rinforzatore') + '</span>' +
-      '<div class="campi-riga">' + inputTesto(r, base + '.descrizione', x.descrizione, 'Cosa', 'Es. 30 s di tablet') +
+      '<div class="campi-riga">' + inputTesto(r, base + '.descrizione', x.descrizione, 'Cosa', 'Es. 30 s di tablet').replace('<input ', '<input list="fp-preferiti" ') +
       select(r, base + '.categoria', P.CATEGORIE_RINFORZATORE, x.categoria, 'Tipo') + '</div>' +
       '<div class="campi-riga">' + inputTesto(r, base + '.magnitudo', x.magnitudo, 'Quantità o durata') +
       select(r, base + '.qualita', P.QUALITA, x.qualita, 'Qualità') +
       inputNum(r, base + '.ritardoSec', x.ritardoSec, 'Ritardo (s)') + '</div></div>';
+  }
+
+  // Suggerimenti dalla valutazione delle preferenze più recente.
+  function preferiti(sugg) {
+    if (!sugg.stimoli.length) return '<p class="aiuto piccolo">Nessuna valutazione delle preferenze: aggiungine una nella scheda Preferenze per avere i rinforzatori suggeriti.</p>';
+    var alti = sugg.stimoli.filter(function (x) { return x.livello === 'alta'; });
+    return '<datalist id="fp-preferiti">' + sugg.stimoli.map(function (x) { return '<option value="' + esc(x.nome) + '">'; }).join('') + '</datalist>' +
+      '<p class="aiuto piccolo preferiti">Preferenze del ' + esc(U.data(new Date(sugg.valutazione.data + 'T12:00:00').getTime())) + ': ' +
+      (alti.length ? 'alta preferenza per ' + alti.map(function (x) { return '<strong>' + esc(x.nome) + '</strong>'; }).join(', ') : 'nessuno stimolo ad alta preferenza') +
+      '. I campi “Cosa” li propongono mentre scrivi.' +
+      (sugg.scaduta ? ' <span class="pillola attenzione">Valutazione di ' + sugg.giorni + ' giorni fa: da rifare</span>' : '') + '</p>';
   }
 
   function campiContingenza(c, r, pr) {
@@ -353,6 +364,7 @@
       ? { id: M.nuovoId('pf'), tipo: 'intervento', nome: '', descrizione: '', antecedenti: [], contingenze: [], criteri: {}, uscita: '' }
       : copia(faseEsistente);
     var st = nuova ? { tipo: 'prevista' } : statoFase(pr, faseEsistente);
+    var sugg = P.suggerimentiRinforzatori(ctx.soggetto ? ctx.soggetto() : null);
 
     var html = '<div class="modulo">' +
       '<div class="campi-riga">' +
@@ -362,7 +374,8 @@
       '<div class="campo"><label for="fp-descrizione">Descrizione</label><textarea id="fp-descrizione" placeholder="Cosa cambia in questa fase">' + esc(bozza.descrizione || '') + '</textarea></div>' +
       '<fieldset><legend>Antecedenti</legend><div id="fp-antecedenti"></div>' +
         '<button class="btn btn-piatto" type="button" data-aggiungi="antecedenti">+ Aggiungi intervento sull’antecedente</button></fieldset>' +
-      '<fieldset><legend>Conseguenze programmate</legend><p class="aiuto piccolo">Una riga per procedura. Per rinforzo differenziale con estinzione aggiungi anche la riga di estinzione sul comportamento problema.</p><div id="fp-contingenze"></div>' +
+      '<fieldset><legend>Conseguenze programmate</legend><p class="aiuto piccolo">Una riga per procedura. Per rinforzo differenziale con estinzione aggiungi anche la riga di estinzione sul comportamento problema.</p>' +
+        preferiti(sugg) + '<div id="fp-contingenze"></div>' +
         '<button class="btn btn-piatto" type="button" data-aggiungi="contingenze">+ Aggiungi conseguenza</button></fieldset>' +
       '<div class="campo"><label for="fp-uscita">Criterio per passare alla fase successiva</label><input id="fp-uscita" type="text" value="' + esc(bozza.uscita || '') + '" placeholder="Es. problema sotto 0,2 al minuto per 3 sessioni"></div>' +
       '<fieldset><legend>Regole decisionali</legend>' +

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano;
+  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze;
   var esc = U.esc;
 
   var stato = A.carica();
@@ -21,12 +21,17 @@
     { id: 'grafici', nome: 'Grafici' },
     { id: 'programmi', nome: 'Programmi e target' },
     { id: 'piano', nome: 'Piano di intervento' },
+    { id: 'preferenze', nome: 'Preferenze' },
     { id: 'schedule', nome: 'Schedule di seduta' },
     { id: 'sessioni', nome: 'Sessioni' }
   ];
 
   function salva() { A.salva(stato); disegna(); }
-  var ctxPiano = { salva: function () { salva(); } };
+  var ctxPiano = {
+    salva: function () { salva(); },
+    soggetto: function () { return corrente(); },
+    operatore: function (id) { return A.operatore(stato, id); }
+  };
   function corrente() { return A.soggetto(stato, vista.soggettoId); }
 
   // ---- Barra e elenco pazienti ----------------------------------------------
@@ -92,7 +97,7 @@
         return '<button type="button" role="tab" class="scheda' + (t.id === vista.scheda ? ' attiva' : '') + '" aria-selected="' + (t.id === vista.scheda) + '" data-azione="scheda" data-id="' + t.id + '">' + t.nome + '</button>';
       }).join('') + '</div>' +
       '<div class="contenuto" role="tabpanel">' + ({
-        grafici: vistaGrafici, programmi: vistaProgrammi, piano: D.vista, schedule: vistaSchedule, sessioni: vistaSessioni
+        grafici: vistaGrafici, programmi: vistaProgrammi, piano: D.vista, preferenze: function (x) { return DP.vista(x, stato); }, schedule: vistaSchedule, sessioni: vistaSessioni
       }[vista.scheda] || vistaGrafici)(s) + '</div>';
     main.innerHTML = html;
   }
@@ -720,6 +725,10 @@
       case 'modifica-programma': rinominaProgramma(pr); break;
       case 'cambia-fase': cambiaFase(pr, b.getAttribute('data-fase')); break;
       case 'nuovo-target': modificaTarget(pr, null); break;
+      case 'nuova-preferenza': DP.modifica(ctxPiano, s, null); break;
+      case 'modifica-preferenza':
+        DP.modifica(ctxPiano, s, (s.preferenze || []).find(function (v) { return v.id === b.getAttribute('data-id'); }));
+        break;
       case 'modello-piano': D.applicaModello(ctxPiano, pr); break;
       case 'nuova-fase-piano': D.modificaFase(ctxPiano, pr, null); break;
       case 'modifica-fase-piano': D.modificaFase(ctxPiano, pr, P.fasePianificata(pr, b.getAttribute('data-id'))); break;
