@@ -217,3 +217,16 @@ test('archivio: due fasi dello stesso tipo restano distinte e il criterio vale n
   const s = archivio.apriSessione(stato, pz);
   assert.equal(s.fasiId[programma.id], 'fa_nuova');
 });
+
+test('piano: funzioni multiple e sintetizzate', () => {
+  const t = { nome: 'Colpire', funzione: { ipotesi: 'fuga', altre: ['tangibile', 'fuga'], sintetizzata: true } };
+  assert.deepEqual(piano.funzioniDi(t), ['fuga', 'tangibile']);
+  assert.equal(piano.descriviFunzione(t), 'Fuga o evitamento + accesso a oggetti o attività, sintetizzate (IISCA)');
+  assert.equal(piano.rinforzatoreFunzionale(['fuga', 'tangibile']).descrizione, 'Pausa dal compito con oggetto richiesto');
+  // L'estinzione per il tangibile è coerente con una delle due funzioni.
+  const pr = { target: [{ id: 'p', ruolo: 'problema', ...t }, { id: 'a', ruolo: 'sostitutivo', sostituisce: 'p', nome: 'Chiede' }],
+    piano: { fasi: [{ id: 'f', nome: 'FCT', contingenze: [
+      { procedura: 'fct', targetId: 'p', schema: { tipo: 'CRF' }, parametri: { alternativoId: 'a', problema: 'estinzione' } },
+      { procedura: 'estinzione', targetId: 'p', parametri: { variante: 'tangibile' } }] }] } };
+  assert.doesNotMatch(piano.controlla(pr).map((a) => a.testo).join('\n'), /funzione ipotizzata/);
+});

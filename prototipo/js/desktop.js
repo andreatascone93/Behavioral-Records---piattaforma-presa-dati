@@ -216,7 +216,7 @@
         pr.target.map(function (t) {
           var tipo = M.TIPI[t.metodo.tipo];
           var ruolo = P.RUOLI[t.ruolo] || P.RUOLI.abilita;
-          var funz = t.ruolo === 'problema' && t.funzione && P.FUNZIONI[t.funzione.ipotesi] ? P.FUNZIONI[t.funzione.ipotesi].nome : '';
+          var funz = t.ruolo === 'problema' ? P.descriviFunzione(t) : '';
           return '<tr><td><strong>' + esc(t.nome) + '</strong><div class="tenue piccolo definizione">' + esc(t.definizione.include || '') + '</div></td>' +
             '<td><span class="pillola senza-punto ruolo-' + (t.ruolo || 'abilita') + '">' + esc(ruolo.breve) + '</span>' + (funz ? '<div class="tenue piccolo">Funzione: ' + esc(funz.toLowerCase()) + '</div>' : '') + '</td>' +
             '<td>' + esc(tipo.nome) + parametriBrevi(t.metodo) + '<div class="tenue piccolo">versione ' + t.metodo.versione + '</div></td>' +
@@ -370,9 +370,13 @@
         '<p class="aiuto piccolo" id="t-ruolo-aiuto"></p>' +
         '<fieldset data-per="problema"><legend>Ipotesi di funzione</legend>' +
           '<div class="campi-riga">' +
-            '<div class="campo"><label for="t-funzione">Funzione</label>' + sel('t-funzione', P.FUNZIONI, funz.ipotesi) + '</div>' +
+            '<div class="campo"><label for="t-funzione">Funzione principale</label>' + sel('t-funzione', P.FUNZIONI, funz.ipotesi) + '</div>' +
             '<div class="campo"><label for="t-certezza">Certezza</label>' + sel('t-certezza', P.CERTEZZA, funz.certezza) + '</div>' +
           '</div>' +
+          '<div class="campo"><span class="etichetta">Altre funzioni (controllo multiplo)</span><div class="spunte colonne">' + Object.keys(P.FUNZIONI).filter(function (k) { return k !== 'multipla' && k !== 'da_definire'; }).map(function (k) {
+            return '<label class="spunta piccolo"><input type="checkbox" name="t-altre" value="' + k + '"' + ((funz.altre || []).indexOf(k) !== -1 ? ' checked' : '') + '> ' + esc(P.FUNZIONI[k].nome) + '</label>';
+          }).join('') + '</div></div>' +
+          '<label class="spunta piccolo"><input id="t-sintetizzata" type="checkbox"' + (funz.sintetizzata ? ' checked' : '') + '> Le funzioni operano insieme (contingenza sintetizzata, IISCA): il rinforzatore dell’alternativa le combina</label>' +
           '<div class="campo"><span class="etichetta">Come è stata valutata</span><div class="spunte">' + Object.keys(P.FONTI_VALUTAZIONE).map(function (k) {
             return '<label class="spunta piccolo"><input type="checkbox" name="t-fonti" value="' + k + '"' + ((funz.fonti || []).indexOf(k) !== -1 ? ' checked' : '') + '> ' + esc(P.FONTI_VALUTAZIONE[k]) + '</label>';
           }).join('') + '</div></div>' +
@@ -531,6 +535,9 @@
       if (bozza.ruolo === 'problema') {
         bozza.funzione = {
           ipotesi: q('#t-funzione'), certezza: q('#t-certezza'), note: q('#t-funz-note').trim(),
+          altre: Array.prototype.map.call(f.querySelectorAll('input[name="t-altre"]:checked'), function (x) { return x.value; })
+            .filter(function (k) { return k !== q('#t-funzione'); }),
+          sintetizzata: f.querySelector('#t-sintetizzata').checked,
           fonti: Array.prototype.map.call(f.querySelectorAll('input[name="t-fonti"]:checked'), function (x) { return x.value; })
         };
       }

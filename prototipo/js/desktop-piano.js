@@ -75,7 +75,7 @@
       var info = '';
       if (t.ruolo === 'problema') {
         var f = t.funzione || {};
-        info = 'Funzione: ' + (P.FUNZIONI[f.ipotesi] ? P.FUNZIONI[f.ipotesi].nome.toLowerCase() : 'da definire') +
+        info = 'Funzione: ' + P.descriviFunzione(t).toLowerCase() +
           (f.certezza ? ' (' + P.CERTEZZA[f.certezza].toLowerCase() + ')' : '');
         var sost = pr.target.filter(function (x) { return x.sostituisce === t.id; });
         if (sost.length) info += ' · sostituito da ' + sost.map(function (x) { return '“' + x.nome + '”'; }).join(', ');
@@ -254,8 +254,9 @@
   // ---- Valori predefiniti ----------------------------------------------------
 
   function variantePredefinita(campo, t) {
-    if (campo === 'varianteEstinzione' && t && t.funzione && P.FUNZIONI[t.funzione.ipotesi] && P.FUNZIONI[t.funzione.ipotesi].estinzione) {
-      return P.FUNZIONI[t.funzione.ipotesi].estinzione;
+    var funzioni = P.funzioniDi(t);
+    if (campo === 'varianteEstinzione' && funzioni.length && P.FUNZIONI[funzioni[0]].estinzione) {
+      return P.FUNZIONI[funzioni[0]].estinzione;
     }
     return Object.keys(P.VARIANTI[campo])[0];
   }
@@ -278,9 +279,10 @@
       if (campo === 'azzera') out.parametri.azzera = true;
     });
     // Per FCT il rinforzatore di partenza è quello della funzione.
-    if (c.procedura === 'fct' && t && t.funzione) {
-      var funz = { attenzione: ['Attenzione dell’adulto', 'sociale'], fuga: ['Pausa dal compito', 'pausa'], tangibile: ['Oggetto richiesto', 'tangibile'] }[t.funzione.ipotesi];
-      if (funz) { out.rinforzatore.descrizione = funz[0]; out.rinforzatore.categoria = funz[1]; }
+    // Con funzioni sintetizzate il rinforzatore le combina tutte.
+    if (c.procedura === 'fct' && P.funzioniDi(t).length) {
+      var f = t.funzione.sintetizzata ? P.funzioniDi(t) : P.funzioniDi(t)[0];
+      out.rinforzatore = P.rinforzatoreFunzionale(f);
     }
     return out;
   }
@@ -441,7 +443,8 @@
       var trova = function (id) { return pr.target.find(function (t) { return t.id === id; }) || null; };
       var problema = trova(f.querySelector('#mp-problema').value);
       var alternativo = trova(f.querySelector('#mp-alternativo').value);
-      var funzione = problema && problema.funzione ? problema.funzione.ipotesi : null;
+      var funzioni = P.funzioniDi(problema);
+      var funzione = problema && problema.funzione && problema.funzione.sintetizzata ? funzioni : funzioni[0] || null;
       var nuove = P.creaFasi(chiave, problema, alternativo, funzione);
       pr.piano = pr.piano || { modello: null, fasi: [] };
       var svolte = pr.piano.fasi.filter(function (x) { return statoFase(pr, x).tipo !== 'prevista'; });

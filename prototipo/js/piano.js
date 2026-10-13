@@ -24,10 +24,34 @@
     attenzione: { nome: 'Attenzione', rinforzo: 'Rinforzo sociale positivo', estinzione: 'attenzione' },
     fuga: { nome: 'Fuga o evitamento', rinforzo: 'Rinforzo sociale negativo', estinzione: 'fuga' },
     tangibile: { nome: 'Accesso a oggetti o attività', rinforzo: 'Rinforzo sociale positivo', estinzione: 'tangibile' },
-    automatica: { nome: 'Automatica (sensoriale)', rinforzo: 'Rinforzo automatico', estinzione: 'sensoriale' },
+    automatica: { nome: 'Automatica positiva (sensoriale)', rinforzo: 'Rinforzo automatico positivo', estinzione: 'sensoriale' },
+    automatica_negativa: { nome: 'Automatica negativa (es. sollievo dal dolore)', rinforzo: 'Rinforzo automatico negativo', estinzione: 'sensoriale' },
     multipla: { nome: 'Funzioni multiple', rinforzo: 'Più fonti di rinforzo', estinzione: null },
     da_definire: { nome: 'Da definire', rinforzo: '', estinzione: null }
   };
+
+  /*
+   * Funzioni di un comportamento problema: l'ipotesi principale più le altre
+   * (controllo multiplo). Con sintetizzata = true le funzioni operano insieme,
+   * come nella contingenza sintetizzata dell'IISCA (Hanley et al., 2014):
+   * il rinforzatore dell'alternativa le combina tutte.
+   */
+  function funzioniDi(t) {
+    var f = t && t.funzione;
+    if (!f) return [];
+    return [f.ipotesi].concat(f.altre || []).filter(function (k, i, a) {
+      return FUNZIONI[k] && k !== 'multipla' && k !== 'da_definire' && a.indexOf(k) === i;
+    });
+  }
+
+  function descriviFunzione(t) {
+    var f = t && t.funzione;
+    var elenco = funzioniDi(t);
+    if (!elenco.length) return f && f.ipotesi === 'multipla' ? FUNZIONI.multipla.nome : 'Da definire';
+    var testo = elenco.map(function (k, i) { var n = FUNZIONI[k].nome; return i ? n.toLowerCase() : n; }).join(' + ');
+    if (f.sintetizzata && elenco.length > 1) testo += ', sintetizzate (IISCA)';
+    return testo;
+  }
 
   var FONTI_VALUTAZIONE = {
     indiretta: 'Valutazione indiretta (interviste, questionari)',
@@ -364,10 +388,10 @@
       if (/^(fct|dra|dri)$/.test(c.procedura) && !perId[p.alternativoId]) {
         out.push({ livello: 'attenzione', testo: x.fase.nome + ': scegli il comportamento alternativo da rinforzare per ' + nome + '.' });
       }
-      if (c.procedura === 'estinzione' && t && t.funzione && FUNZIONI[t.funzione.ipotesi]) {
-        var attesa = FUNZIONI[t.funzione.ipotesi].estinzione;
-        if (attesa && p.variante && p.variante !== attesa) {
-          out.push({ livello: 'attenzione', testo: x.fase.nome + ': l’estinzione di ' + nome + ' è per ' + p.variante + ', ma la funzione ipotizzata è ' + FUNZIONI[t.funzione.ipotesi].nome.toLowerCase() + '.' });
+      if (c.procedura === 'estinzione' && funzioniDi(t).length) {
+        var attese = funzioniDi(t).map(function (k) { return FUNZIONI[k].estinzione; });
+        if (p.variante && attese.indexOf(p.variante) === -1) {
+          out.push({ livello: 'attenzione', testo: x.fase.nome + ': l’estinzione di ' + nome + ' è per ' + p.variante + ', ma la funzione ipotizzata è ' + descriviFunzione(t).toLowerCase() + '.' });
         }
       }
       if (c.procedura === 'estinzione' && !tutteContingenze.some(function (y) { return y.fase === x.fase && y.c !== c && PROCEDURE[y.c.procedura] && PROCEDURE[y.c.procedura].gruppo !== 'estinzione'; })) {
@@ -404,19 +428,31 @@
     return root.BR && root.BR.modello ? root.BR.modello.nuovoId(p) : p + '_' + Math.random().toString(36).slice(2, 10);
   }
 
+  var RINFORZATORI_FUNZIONALI = {
+    attenzione: { descrizione: 'Attenzione dell’adulto', categoria: 'sociale' },
+    fuga: { descrizione: 'Pausa dal compito', categoria: 'pausa', magnitudo: '30 s' },
+    tangibile: { descrizione: 'Oggetto richiesto', categoria: 'tangibile', magnitudo: '30 s' },
+    automatica: { descrizione: 'Stimolazione equivalente', categoria: 'sensoriale' },
+    automatica_negativa: { descrizione: 'Sollievo equivalente', categoria: 'sensoriale' }
+  };
+
+  // funzione: una chiave di FUNZIONI oppure un elenco (funzioni sintetizzate,
+  // es. pausa con oggetto preferito e attenzione).
   function rinforzatoreFunzionale(funzione) {
-    var r = {
-      attenzione: { descrizione: 'Attenzione dell’adulto', categoria: 'sociale' },
-      fuga: { descrizione: 'Pausa dal compito', categoria: 'pausa', magnitudo: '30 s' },
-      tangibile: { descrizione: 'Oggetto richiesto', categoria: 'tangibile', magnitudo: '30 s' },
-      automatica: { descrizione: 'Stimolazione equivalente', categoria: 'sensoriale' }
-    }[funzione];
-    return r ? Object.assign({ qualita: 'alta', ritardoSec: 0 }, r) : { descrizione: '', categoria: 'sociale', qualita: 'alta', ritardoSec: 0 };
+    var elenco = (Array.isArray(funzione) ? funzione : [funzione]).filter(function (k) { return RINFORZATORI_FUNZIONALI[k]; });
+    var base = { qualita: 'alta', ritardoSec: 0 };
+    if (!elenco.length) return Object.assign(base, { descrizione: '', categoria: 'sociale' });
+    var primo = RINFORZATORI_FUNZIONALI[elenco[0]];
+    if (elenco.length === 1) return Object.assign(base, primo);
+    return Object.assign(base, primo, {
+      descrizione: elenco.map(function (k, i) { var d = RINFORZATORI_FUNZIONALI[k].descrizione; return i ? d.toLowerCase() : d; }).join(' con ')
+    });
   }
 
   /*
    * Fasi di partenza per un piano. problema e alternativo sono target (o
-   * null); funzione è la chiave in FUNZIONI. Il clinico poi modifica tutto.
+   * null); funzione è una chiave di FUNZIONI o un elenco di chiavi (funzioni
+   * sintetizzate). Il clinico poi modifica tutto.
    */
   var MODELLI = {
     fct: {
@@ -424,7 +460,8 @@
       descrizione: 'Si insegna una richiesta che produce lo stesso rinforzatore del problema, poi si rende lo schema praticabile.',
       fasi: function (problema, alternativo, funzione) {
         var r = rinforzatoreFunzionale(funzione);
-        var ext = FUNZIONI[funzione] && FUNZIONI[funzione].estinzione;
+        var prima = Array.isArray(funzione) ? funzione[0] : funzione;
+        var ext = FUNZIONI[prima] && FUNZIONI[prima].estinzione;
         function fct(schema) {
           return [
             { id: nuovoId('ct'), targetId: problema && problema.id, procedura: 'fct', schema: schema, rinforzatore: r, parametri: { alternativoId: alternativo && alternativo.id, problema: 'estinzione' } },
@@ -492,7 +529,8 @@
   }
 
   var api = {
-    RUOLI: RUOLI, FUNZIONI: FUNZIONI, FONTI_VALUTAZIONE: FONTI_VALUTAZIONE, CERTEZZA: CERTEZZA,
+    RUOLI: RUOLI, FUNZIONI: FUNZIONI, funzioniDi: funzioniDi, descriviFunzione: descriviFunzione,
+    rinforzatoreFunzionale: rinforzatoreFunzionale, FONTI_VALUTAZIONE: FONTI_VALUTAZIONE, CERTEZZA: CERTEZZA,
     SCHEMI: SCHEMI, CATEGORIE_RINFORZATORE: CATEGORIE_RINFORZATORE, QUALITA: QUALITA,
     PROCEDURE: PROCEDURE, GRUPPI: GRUPPI, VARIANTI: VARIANTI, ANTECEDENTI: ANTECEDENTI,
     FORMATI: FORMATI, STRATEGIE_PROMPT: STRATEGIE_PROMPT, CORREZIONI: CORREZIONI, FASI: FASI,

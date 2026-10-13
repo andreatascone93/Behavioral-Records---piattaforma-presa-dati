@@ -358,3 +358,4 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
   .fase-piano-azioni { grid-column: 1 / -1; justify-content: flex-start; }
   .sintesi-target li { grid-template-columns: minmax(0, 1fr); }
 }
+.spunte.colonne { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
