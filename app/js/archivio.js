@@ -9,6 +9,8 @@
   'use strict';
 
   var M = root.BR.modello;
+  if (!root.BR.seduta && typeof module !== 'undefined' && module.exports) require('./seduta.js');
+  var Sd = root.BR.seduta;
   var CHIAVE = 'behavioral-records-prototipo-v3'; // localStorage dei prototipi
   var CHIAVE_DEPOSITO = 'stato';
   var memoria = null;   // stato corrente di questa pagina
@@ -214,11 +216,15 @@
       var r = M.calcola(metodo, ev, s);
       if (r.valore == null && !ev.length) return;
       var voce = voceDiSessione(programma, s);
-      out.push({
+      var punto = {
         sessione: s, valore: r.valore, dettagli: r.dettagli,
         fase: voce ? voce.tipo : 'baseline', faseId: voce ? voce.id : null,
         faseNome: root.BR.piano.nomeFase(programma, voce)
-      });
+      };
+      // Con la scaletta, anche i valori dei soli probe e del solo insegnamento.
+      var perContesto = Sd.valoriPerContesto(metodo, ev, s);
+      if (perContesto) punto.perContesto = perContesto;
+      out.push(punto);
     });
     return out;
   }
@@ -260,6 +266,8 @@
   function valoriPerCriterio(programma, target, punti, criterio) {
     var voce = voceCorrente(programma);
     var nellaFase = punti.filter(function (p) { return voce ? p.faseId === voce.id : true; });
+    // Criterio valutato sui soli probe: contano le sessioni con dati di probe.
+    if (criterio && criterio.contesto) nellaFase = Sd.serieNelContesto(nellaFase, criterio.contesto);
     if (criterio && criterio.primaProva && target.metodo.tipo === 'dtt') nellaFase = primaSedutaDelGiorno(nellaFase);
     return nellaFase.map(function (p) {
       return { valore: M.valoreCriterio(criterio, target.metodo.tipo, p), operatore: p.sessione.operatoreId, setting: p.sessione.setting };
@@ -336,6 +344,7 @@
       if (voce) s.fasiId[pr.id] = voce.id;
       pr.target.forEach(function (t) { s.versioniMetodi[t.metodo.id] = t.metodo.versione; });
     });
+    Sd.preparaSessione(s, sog, s.inizio);
     stato.sessioni.push(s);
     return s;
   }
@@ -346,6 +355,9 @@
       metodoId: target.metodo.id, tipo: tipo, t: Date.now(), valore: valore,
       operatoreId: sessione.operatoreId, sincronizzato: false
     };
+    // Il blocco della scaletta in corso: separa i probe dall'insegnamento.
+    var blocco = Sd.etichettaEvento(sessione);
+    if (blocco) { e.blocco = blocco.blocco; e.contesto = blocco.contesto; }
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
     stato.eventi.push(e);
     return e;
@@ -363,6 +375,7 @@
 
   function chiudiSessione(stato, sessione) {
     sessione.fine = Date.now();
+    Sd.chiudi(sessione, sessione.fine);
     sessione.stato = 'chiusa';
     sessione.sincronizzata = false;
   }
