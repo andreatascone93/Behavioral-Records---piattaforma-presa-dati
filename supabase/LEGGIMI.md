@@ -58,7 +58,7 @@ L'app è la cartella `app/`, fatta di file statici: non c'è nulla da compilare.
 
 Entrambi leggono il file `app/_headers`, che evita di tenere in cache il service worker e quindi fa arrivare subito gli aggiornamenti.
 
-GitHub Pages funziona solo con il repository pubblico o con un piano GitHub a pagamento.
+**GitHub Pages** (già configurato): il workflow `.github/workflows/pages.yml` pubblica la cartella `app` a ogni modifica unita in `main`, all'indirizzo <https://andreatascone93.github.io/Behavioral-Records---piattaforma-presa-dati/>. Va attivato una volta in *Settings → Pages → Source: GitHub Actions*. Funziona solo con il repository pubblico o con un piano GitHub a pagamento, e non legge `app/_headers`: gli aggiornamenti possono arrivare con qualche minuto di ritardo.
 
 ## 7. Primo collegamento
 

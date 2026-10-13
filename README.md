@@ -16,7 +16,9 @@ L'app è la versione **clinica** con **dati di esempio**. Senza cloud collegato 
 
 ## Provare l'app
 
-Con Node:
+Online: <https://andreatascone93.github.io/Behavioral-Records---piattaforma-presa-dati/>. Il workflow `.github/workflows/pages.yml` ripubblica la cartella `app` su GitHub Pages a ogni push su `main`, dopo aver passato i test. Dal telefono basta aprire l'indirizzo e installare l'app sulla schermata Home.
+
+In locale, con Node:
 
 ```sh
 npm start        # serve la cartella app su http://localhost:3000
