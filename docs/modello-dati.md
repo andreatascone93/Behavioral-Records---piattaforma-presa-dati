@@ -73,7 +73,7 @@ Dieci tipi di misura coprono quasi tutti i programmi ABA; ognuno ha uno strument
 
 Gerarchia dei prompt di default (dal più al meno intrusivo): fisico totale, fisico parziale, modello, gestuale, verbale, indipendente. È modificabile per programma.
 
-Il criterio di padronanza di default è "90% di risposte indipendenti per 3 sessioni consecutive" (era 80%: alzato il 13 ottobre 2026 dopo la [ricerca di letteratura](ricerca-letteratura.md), vedi Richling, Williams & Carr, 2019), modificabile per metodo. Quando viene raggiunto, il desktop lo segnala e propone il cambio di fase.
+Il criterio di padronanza di default è "90% di risposte indipendenti per 3 sessioni consecutive" (era 80%: alzato il 13 ottobre 2026 dopo la [ricerca di letteratura](ricerca-letteratura.md), vedi Richling, Williams & Carr, 2019), modificabile per metodo. Il criterio può chiedere anche un livello di prompt, la prima prova del giorno, più operatori o più setting (vedi [piano di intervento](piano-intervento.md#criteri-di-padronanza-più-ricchi)). Quando viene raggiunto, il desktop lo segnala e propone il cambio di fase.
 
 ## Sessioni e rilevazioni offline
 

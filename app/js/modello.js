@@ -129,6 +129,16 @@
 
   function percentuale(n, d) { return d ? (n / d) * 100 : null; }
 
+  // Posizione nella scala dei prompt: 0 = fisico totale, 5 = indipendente.
+  function indicePrompt(id) { return PROMPT.findIndex(function (x) { return x.id === id; }); }
+
+  // Una risposta conta per il criterio se il prompt è al livello richiesto o
+  // meno intrusivo: con livello 'V' valgono V e I. Senza livello, solo I.
+  function promptAccettato(prompt, livello) {
+    var i = indicePrompt(prompt);
+    return i !== -1 && i >= indicePrompt(livello || 'I');
+  }
+
   /*
    * Valore per sessione di un metodo.
    * sessione: { inizio: ms, fine: ms | null }
@@ -187,7 +197,10 @@
           if (e.valore.esito === 'errore') dist.errore++;
           else dist[e.valore.prompt] = (dist[e.valore.prompt] || 0) + 1;
         });
-        return { valore: percentuale(dist.I, prove.length), dettagli: { prove: prove.length, distribuzione: dist } };
+        // La prima prova della seduta serve ai criteri sulla prima prova del
+        // giorno (sondaggio a freddo).
+        var prima = prove.length ? { esito: prove[0].valore.esito, prompt: prove[0].valore.prompt } : null;
+        return { valore: percentuale(dist.I, prove.length), dettagli: { prove: prove.length, distribuzione: dist, primaProva: prima } };
       }
       case 'task_analysis': {
         var perPasso = {};
@@ -212,9 +225,53 @@
   }
 
   /*
-   * Criterio: { soglia, verso: 'almeno' | 'al_massimo', sessioni }.
+   * Criterio: { soglia, verso: 'almeno' | 'al_massimo', sessioni } più, se
+   * servono, le richieste che lo rendono più severo:
+   *   livelloPrompt: 'V' | 'G' | 'M' | 'FP' (DTT e task analysis): contano le
+   *     risposte a quel livello di prompt o meno intrusive, non solo le
+   *     indipendenti;
+   *   primaProva: true (DTT): conta solo la prima prova della prima seduta di
+   *     ogni giorno (Lerman et al., 2011; Cummings & Carr, 2009);
+   *   minOperatori, minSetting: tra le sessioni consecutive a criterio ci
+   *     devono essere almeno tanti operatori o setting diversi (Stokes & Baer,
+   *     1977).
+   */
+
+  /*
+   * Valore di una sessione per il criterio. Di solito è il valore della
+   * misura; con un livello di prompt è la percentuale di risposte a quel
+   * livello o meno intrusive; con la prima prova vale 100 se la prima prova
+   * è corretta al livello richiesto, 0 se no.
+   * punto: { valore, dettagli } come in archivio.serie.
+   */
+  function valoreCriterio(criterio, tipo, punto) {
+    if (!punto) return null;
+    var d = punto.dettagli || {};
+    var livello = criterio && criterio.livelloPrompt;
+    if (tipo === 'dtt' && criterio && criterio.primaProva) {
+      if (!d.primaProva) return null;
+      return d.primaProva.esito !== 'errore' && promptAccettato(d.primaProva.prompt, livello) ? 100 : 0;
+    }
+    if (livello && livello !== 'I') {
+      if (tipo === 'dtt' && d.distribuzione) {
+        var ok = 0;
+        PROMPT.forEach(function (x) { if (promptAccettato(x.id, livello)) ok += d.distribuzione[x.id] || 0; });
+        return percentuale(ok, d.prove);
+      }
+      if (tipo === 'task_analysis' && d.perPasso) {
+        var liv = Object.keys(d.perPasso).map(function (k) { return d.perPasso[k]; });
+        return percentuale(liv.filter(function (x) { return promptAccettato(x, livello); }).length, liv.length);
+      }
+    }
+    return punto.valore;
+  }
+
+  /*
    * valori: valori per sessione in ordine cronologico, già filtrati sulla fase
-   * in corso. Restituisce { raggiunto, consecutive, mancano }.
+   * in corso. Ogni valore è un numero oppure { valore, operatore, setting },
+   * che serve quando il criterio chiede più operatori o setting.
+   * Restituisce { raggiunto, consecutive, mancano, operatori, setting,
+   * mancanoOperatori, mancanoSetting }.
    */
   function verificaCriterio(criterio, valori) {
     if (!criterio) return null;
@@ -222,23 +279,62 @@
       if (v == null) return false;
       return criterio.verso === 'al_massimo' ? v <= criterio.soglia : v >= criterio.soglia;
     };
-    var consecutive = 0;
+    var consecutive = 0, operatori = {}, setting = {};
     for (var i = valori.length - 1; i >= 0; i--) {
-      if (ok(valori[i])) consecutive++;
-      else break;
+      var x = valori[i];
+      var oggetto = x !== null && typeof x === 'object';
+      if (!ok(oggetto ? x.valore : x)) break;
+      consecutive++;
+      if (oggetto && x.operatore) operatori[x.operatore] = true;
+      if (oggetto && x.setting) setting[String(x.setting).trim().toLowerCase()] = true;
     }
+    var nOp = Object.keys(operatori).length, nSet = Object.keys(setting).length;
+    var minOp = +criterio.minOperatori || 1, minSet = +criterio.minSetting || 1;
+    var mancanoOp = minOp > 1 ? Math.max(minOp - nOp, 0) : 0;
+    var mancanoSet = minSet > 1 ? Math.max(minSet - nSet, 0) : 0;
     return {
-      raggiunto: consecutive >= criterio.sessioni,
+      raggiunto: consecutive >= criterio.sessioni && !mancanoOp && !mancanoSet,
       consecutive: Math.min(consecutive, criterio.sessioni),
-      mancano: Math.max(criterio.sessioni - consecutive, 0)
+      mancano: Math.max(criterio.sessioni - consecutive, 0),
+      operatori: nOp,
+      setting: nSet,
+      mancanoOperatori: mancanoOp,
+      mancanoSetting: mancanoSet
     };
   }
+
+  // Testo breve sullo stato del criterio, per le pillole di desktop e telefono.
+  function statoCriterioBreve(c) {
+    if (!c) return 'Senza criterio';
+    if (c.raggiunto) return 'Criterio raggiunto';
+    if (c.consecutive > 0 && !c.mancano && (c.mancanoOperatori || c.mancanoSetting)) {
+      var serve = [];
+      if (c.mancanoOperatori) serve.push(c.mancanoOperatori === 1 ? 'un altro operatore' : c.mancanoOperatori + ' altri operatori');
+      if (c.mancanoSetting) serve.push(c.mancanoSetting === 1 ? 'un altro setting' : c.mancanoSetting + ' altri setting');
+      return 'A criterio, manca ' + serve.join(' e ');
+    }
+    if (c.consecutive > 0) return c.consecutive + ' di ' + (c.consecutive + c.mancano) + ' sessioni a criterio';
+    return 'Sotto criterio';
+  }
+
+  var NOMI_LIVELLO = { V: 'verbale', G: 'gestuale', M: 'modello', FP: 'fisico parziale', FT: 'fisico totale' };
 
   function descriviCriterio(criterio, tipo) {
     if (!criterio) return 'Nessun criterio';
     var t = TIPI[tipo];
     var verso = criterio.verso === 'al_massimo' ? '≤' : '≥';
-    return verso + ' ' + formatta(criterio.soglia, tipo) + ' ' + t.unita + ' per ' + criterio.sessioni + ' sessioni consecutive';
+    var livello = (tipo === 'dtt' || tipo === 'task_analysis') && criterio.livelloPrompt && criterio.livelloPrompt !== 'I' ? criterio.livelloPrompt : null;
+    var conPrompt = livello ? (livello === 'M' ? 'con modello o prompt meno intrusivo' : 'con prompt ' + NOMI_LIVELLO[livello] + ' o meno intrusivo') : '';
+    var testo;
+    if (tipo === 'dtt' && criterio.primaProva) {
+      testo = 'Prima prova del giorno corretta ' + (livello ? conPrompt : 'e indipendente') + ' per ' + criterio.sessioni + ' giorni consecutivi';
+    } else {
+      var unita = livello ? (tipo === 'dtt' ? '% risposte corrette ' : '% passi ') + conPrompt : t.unita;
+      testo = verso + ' ' + formatta(criterio.soglia, tipo) + ' ' + unita + ' per ' + criterio.sessioni + ' sessioni consecutive';
+    }
+    if (+criterio.minOperatori > 1) testo += ', con almeno ' + criterio.minOperatori + ' operatori diversi';
+    if (+criterio.minSetting > 1) testo += ', in almeno ' + criterio.minSetting + ' setting diversi';
+    return testo;
   }
 
   function formatta(valore, tipo) {
@@ -262,6 +358,9 @@
     eventiValidi: eventiValidi,
     calcola: calcola,
     verificaCriterio: verificaCriterio,
+    valoreCriterio: valoreCriterio,
+    statoCriterioBreve: statoCriterioBreve,
+    promptAccettato: promptAccettato,
     descriviCriterio: descriviCriterio,
     formatta: formatta,
     media: media,

@@ -79,8 +79,9 @@ test('ABC: conta gli episodi e le combinazioni', () => {
 
 test('criterio: conta le sessioni consecutive in fondo alla serie', () => {
   const c = { soglia: 80, verso: 'almeno', sessioni: 3 };
-  assert.deepEqual(M.verificaCriterio(c, [90, 70, 80, 85, 90]), { raggiunto: true, consecutive: 3, mancano: 0 });
-  assert.deepEqual(M.verificaCriterio(c, [90, 90, 70, 85]), { raggiunto: false, consecutive: 1, mancano: 2 });
+  const base = (r) => ({ raggiunto: r.raggiunto, consecutive: r.consecutive, mancano: r.mancano });
+  assert.deepEqual(base(M.verificaCriterio(c, [90, 70, 80, 85, 90])), { raggiunto: true, consecutive: 3, mancano: 0 });
+  assert.deepEqual(base(M.verificaCriterio(c, [90, 90, 70, 85])), { raggiunto: false, consecutive: 1, mancano: 2 });
   const giu = { soglia: 0.1, verso: 'al_massimo', sessioni: 3 };
   assert.equal(M.verificaCriterio(giu, [0.05, 0.08, 0.1]).raggiunto, true);
 });

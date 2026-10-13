@@ -5,7 +5,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze;
+  var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze, F = BR.fedelta;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -118,7 +118,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     if (!c) return '<span class="pillola">Senza criterio</span>';
     if (c.raggiunto) return '<span class="pillola bene">Criterio raggiunto</span>';
     if (c.fase === 'baseline') return '<span class="pillola">In baseline</span>';
-    if (c.consecutive > 0) return '<span class="pillola attenzione">' + c.consecutive + ' di ' + (c.consecutive + c.mancano) + ' sessioni a criterio</span>';
+    if (c.consecutive > 0) return '<span class="pillola attenzione">' + esc(M.statoCriterioBreve(c)) + '</span>';
     return '<span class="pillola">Sotto criterio</span>';
   }
 
@@ -156,11 +156,13 @@ BR.archivio.avvia().then(function (statoIniziale) {
             ? '<div class="proposta"><span>Il criterio è raggiunto. Vuoi passare alla fase di mantenimento?</span>' +
               '<button class="btn btn-primario" type="button" data-azione="cambia-fase" data-programma="' + pr.id + '" data-fase="t:mantenimento">Passa a mantenimento</button></div>'
             : '') +
-          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
+          // Se il criterio usa un altro valore (livello di prompt, prima prova),
+          // la sua linea non va sul grafico delle risposte indipendenti.
+          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: altroValore(criterio) ? null : criterio, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
           (punti.escluse ? '<p class="tenue piccolo">' + punti.escluse + (punti.escluse === 1 ? ' sessione registrata' : ' sessioni registrate') + ' con un tipo di misura precedente non ' + (punti.escluse === 1 ? 'è' : 'sono') + ' nel grafico.</p>' : '') +
           extra +
           '<button class="btn btn-piatto piccolo" type="button" data-azione="tabella" data-id="' + chiaveTab + '">' + (tabella ? 'Nascondi i valori' : 'Mostra i valori in tabella') + '</button>' +
-          (tabella ? tabellaValori(punti, t) : '') +
+          (tabella ? tabellaValori(punti, t, altroValore(criterio) ? criterio : null) : '') +
         '</article>';
       }).join('');
       var regole = A.regoleFase(stato, s, pr, { soloSincronizzate: true });
@@ -168,6 +170,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       return '<section class="gruppo">' +
         '<div class="gruppo-testa"><h2>' + esc(pr.nome) + '</h2>' +
         '<span class="pillola penna">Fase: ' + esc(A.nomeFaseCorrente(pr)) + '</span></div>' +
+        pannelloFedelta(s, pr) +
         (regole.ritorno && precedente
           ? '<div class="proposta ritorno"><span>Regola di ritorno superata: i dati indicano di tornare a “' + esc(precedente.nome) + '”.</span>' +
             '<button class="btn" type="button" data-azione="avvia-fase-piano" data-programma="' + pr.id + '" data-id="' + precedente.id + '">Torna alla fase</button></div>'
@@ -181,10 +184,42 @@ BR.archivio.avvia().then(function (statoIniziale) {
     }).join('');
   }
 
-  function tabellaValori(punti, t) {
-    return '<div class="tabella-box"><table class="tabella"><thead><tr><th>Sessione</th><th>Data</th><th>Fase</th><th class="num">' + esc(M.TIPI[t.metodo.tipo].unita) + '</th></tr></thead><tbody>' +
+  // Fedeltà del trattamento nelle sedute del programma: ultima seduta, media
+  // recente, andamento e dettaglio per conseguenza.
+  function pannelloFedelta(s, pr) {
+    var serie = F.serie(stato, s, pr, { soloSincronizzate: true });
+    if (!serie.length) return '';
+    var ultime = serie.slice(-10);
+    var ultima = serie[serie.length - 1];
+    var sotto = ultima.percentuale < F.SOGLIA;
+    return '<div class="fedelta-pannello' + (sotto ? ' sotto' : '') + '">' +
+      '<div class="fedelta-testo"><span class="etichetta">Fedeltà del trattamento</span>' +
+        '<p class="piccolo">Ultima seduta <strong class="dato">' + F.formatta(ultima.percentuale) + '</strong> (' + ultima.corrette + ' su ' + ultima.opportunita + ' occasioni, ' + esc(F.descriviErrori(ultima)) + ')' +
+        ' · media delle ultime ' + ultime.length + ': <span class="dato">' + F.formatta(M.media(ultime.map(function (x) { return x.percentuale; }))) + '</span></p>' +
+        (sotto ? '<p class="piccolo">Sotto il ' + F.SOGLIA + '%: prima di cambiare il piano, verifica come viene applicato (istruzioni e feedback all’operatore).</p>' : '') +
+        '<details class="piccolo"><summary>Dettaglio dell’ultima seduta (' + esc(ultima.faseNome) + ')</summary><ul>' + ultima.righe.map(function (x) {
+          return '<li><strong>' + esc(x.sigla) + '</strong> ' + (x.valutabile
+            ? (x.opportunita ? F.formatta(x.percentuale) + ', ' + x.corrette + ' su ' + x.opportunita + ', ' + esc(F.descriviErrori(x)) : 'nessuna occasione')
+            : '<span class="tenue">' + esc(x.nota) + '</span>') + '</li>';
+        }).join('') + '</ul></details>' +
+      '</div>' +
+      '<div class="fedelta-mini" title="Fedeltà nelle ultime ' + ultime.length + ' sedute; la linea è il ' + F.SOGLIA + '%">' +
+        G.mini(ultime.map(function (x) { return x.percentuale; }), { max: 100, soglia: F.SOGLIA, larghezza: 160, altezza: 44 }) + '</div>' +
+    '</div>';
+  }
+
+  function altroValore(criterio) {
+    return !!criterio && ((criterio.livelloPrompt && criterio.livelloPrompt !== 'I') || !!criterio.primaProva);
+  }
+
+  // criterio: se il criterio usa un valore diverso dalla misura, una colonna in
+  // più con il valore che conta per il criterio.
+  function tabellaValori(punti, t, criterio) {
+    return '<div class="tabella-box"><table class="tabella"><thead><tr><th>Sessione</th><th>Data</th><th>Fase</th><th class="num">' + esc(M.TIPI[t.metodo.tipo].unita) + '</th>' +
+      (criterio ? '<th class="num">Per il criterio</th>' : '') + '</tr></thead><tbody>' +
       punti.map(function (p, i) {
-        return '<tr><td class="dato">' + (i + 1) + '</td><td>' + U.data(p.sessione.inizio) + '</td><td>' + esc(p.faseNome) + '</td><td class="num dato">' + M.formatta(p.valore, t.metodo.tipo) + '</td></tr>';
+        return '<tr><td class="dato">' + (i + 1) + '</td><td>' + U.data(p.sessione.inizio) + '</td><td>' + esc(p.faseNome) + '</td><td class="num dato">' + M.formatta(p.valore, t.metodo.tipo) + '</td>' +
+          (criterio ? '<td class="num dato">' + M.formatta(M.valoreCriterio(criterio, t.metodo.tipo, p), t.metodo.tipo) + '</td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -332,6 +367,22 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   function registroEventi(s, sess, ev) {
+    return fedeltaSessione(s, sess, ev) + elencoEventi(s, sess, ev);
+  }
+
+  function fedeltaSessione(s, sess, ev) {
+    if (!sess.fine) return '';
+    var righe = s.programmi.map(function (pr) {
+      var voce = A.voceDiSessione(pr, sess);
+      var fase = voce && voce.pianoId ? P.fasePianificata(pr, voce.pianoId) : null;
+      var r = F.seduta(fase, pr.target, ev, sess);
+      if (r.percentuale == null) return '';
+      return '<li>' + esc(pr.nome) + ': <strong class="dato">' + F.formatta(r.percentuale) + '</strong> (' + r.corrette + ' su ' + r.opportunita + ', ' + esc(F.descriviErrori(r)) + ')</li>';
+    }).join('');
+    return righe ? '<div class="fedelta-sessione"><span class="etichetta">Fedeltà del trattamento</span><ul>' + righe + '</ul></div>' : '';
+  }
+
+  function elencoEventi(s, sess, ev) {
     var annullati = {};
     ev.forEach(function (e) { if (e.tipo === 'annulla') annullati[e.rif] = true; });
     var ord = ev.slice().sort(function (a, b) { return a.t - b.t; });
@@ -376,6 +427,30 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   // ---- Modifiche --------------------------------------------------------------
+
+  // Livello di prompt fino al quale una risposta conta per il criterio.
+  var LIVELLI_CRITERIO = [
+    ['I', 'Solo indipendenti'],
+    ['V', 'Fino al prompt verbale'],
+    ['G', 'Fino al prompt gestuale'],
+    ['M', 'Fino al modello'],
+    ['FP', 'Fino al fisico parziale']
+  ];
+
+  // Criterio dal modulo del target, con le richieste in più solo dove servono.
+  function leggiCriterio(form) {
+    var q = function (sel) { return form.querySelector(sel); };
+    var tipo = q('#t-tipo').value;
+    var c = { soglia: +q('#t-soglia').value || 0, verso: q('#t-verso').value, sessioni: +q('#t-sessioni').value || 3 };
+    var livello = q('#t-livello').value;
+    if ((tipo === 'dtt' || tipo === 'task_analysis') && livello !== 'I') c.livelloPrompt = livello;
+    // Sulla prima prova il valore è 100 (corretta) o 0: il criterio è "corretta".
+    if (tipo === 'dtt' && q('#t-prima').checked) { c.primaProva = true; c.soglia = 100; c.verso = 'almeno'; }
+    var op = Math.round(+q('#t-min-op').value || 1), set = Math.round(+q('#t-min-set').value || 1);
+    if (op > 1) c.minOperatori = op;
+    if (set > 1) c.minSetting = set;
+    return c;
+  }
 
   function modificaTarget(pr, t) {
     var nuovo = !t;
@@ -468,6 +543,18 @@ BR.archivio.avvia().then(function (statoIniziale) {
             '<div class="campo"><label for="t-soglia">Soglia <span class="tenue" id="t-unita"></span></label><input id="t-soglia" type="number" step="any" min="0" value="' + (c ? c.soglia : 90) + '"></div>' +
             '<div class="campo"><label for="t-sessioni">Sessioni consecutive</label><input id="t-sessioni" type="number" min="1" max="10" value="' + (c ? c.sessioni : 3) + '"></div>' +
           '</div>' +
+          '<div id="t-criterio-piu">' +
+            '<div class="campi-riga">' +
+              '<div class="campo" data-tipi="dtt task_analysis"><label for="t-livello">Risposte che contano</label><select id="t-livello">' +
+                LIVELLI_CRITERIO.map(function (l) {
+                  return '<option value="' + l[0] + '"' + (((c && c.livelloPrompt) || 'I') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
+                }).join('') + '</select></div>' +
+              '<div class="campo"><label for="t-min-op">Operatori diversi, almeno</label><input id="t-min-op" type="number" min="1" max="6" value="' + ((c && c.minOperatori) || 1) + '"></div>' +
+              '<div class="campo"><label for="t-min-set">Setting diversi, almeno</label><input id="t-min-set" type="number" min="1" max="6" value="' + ((c && c.minSetting) || 1) + '"></div>' +
+            '</div>' +
+            '<label class="spunta" data-tipi="dtt"><input id="t-prima" type="checkbox"' + (c && c.primaProva ? ' checked' : '') + '> Conta solo la prima prova del giorno (sondaggio a freddo)</label>' +
+            '<p class="aiuto piccolo">Operatori e setting si contano tra le sessioni consecutive a criterio: con 2 operatori il criterio è raggiunto solo se almeno una di quelle sessioni l’ha condotta un altro operatore. La prima prova del giorno è più severa della percentuale su tutte le prove: tende a segnalare la padronanza più tardi (Lerman et al., 2011).</p>' +
+          '</div>' +
         '</fieldset>' +
         '<fieldset data-per="abilita sostitutivo problema"><legend>Generalizzazione</legend>' +
           '<div class="campo"><label for="t-g-persone">Persone</label><input id="t-g-persone" type="text" value="' + esc((gen.persone || []).join(', ')) + '" placeholder="Separate da virgola"></div>' +
@@ -495,10 +582,19 @@ BR.archivio.avvia().then(function (statoIniziale) {
     }
     function aggiornaObiettivo(form) {
       var crit = form.querySelector('#t-usa-criterio').checked
-        ? M.descriviCriterio({ soglia: +form.querySelector('#t-soglia').value || 0, verso: form.querySelector('#t-verso').value, sessioni: +form.querySelector('#t-sessioni').value || 3 }, form.querySelector('#t-tipo').value)
+        ? M.descriviCriterio(leggiCriterio(form), form.querySelector('#t-tipo').value)
         : '';
       var testo = P.obiettivo({ nome: form.querySelector('#t-nome').value || 'target', obiettivo: { condizione: form.querySelector('#t-condizione').value } }, crit);
       form.querySelector('#t-obiettivo').textContent = testo ? 'Si legge così: ' + testo : '';
+      // Con la prima prova del giorno soglia e verso non servono.
+      var tipo = form.querySelector('#t-tipo').value;
+      var prima = tipo === 'dtt' && form.querySelector('#t-prima').checked;
+      form.querySelector('#t-soglia').disabled = prima;
+      form.querySelector('#t-verso').disabled = prima;
+      var livello = form.querySelector('#t-livello').value;
+      form.querySelector('#t-unita').textContent = '(' + (prima ? '100 = prima prova corretta'
+        : (tipo === 'dtt' || tipo === 'task_analysis') && livello !== 'I' ? (tipo === 'dtt' ? '% risposte corrette' : '% passi') + ' fino a ' + livello
+        : M.TIPI[tipo].unita) + ')';
     }
 
     function parametriHtml(tipo, p) {
@@ -525,9 +621,14 @@ BR.archivio.avvia().then(function (statoIniziale) {
       form.querySelector('#t-tipo-aiuto').textContent = def.descrizione + '. Sul telefono: ' + def.strumentoNome.toLowerCase() + '.';
       form.querySelector('#t-parametri').innerHTML = parametriHtml(tipo, p);
       form.querySelector('#t-unita').textContent = '(' + def.unita + ')';
+      form.querySelectorAll('[data-tipi]').forEach(function (el) {
+        el.hidden = el.getAttribute('data-tipi').split(' ').indexOf(tipo) === -1;
+      });
     }
     function aggiornaCriterio(form) {
-      form.querySelector('#t-criterio').hidden = !form.querySelector('#t-usa-criterio').checked;
+      var usa = form.querySelector('#t-usa-criterio').checked;
+      form.querySelector('#t-criterio').hidden = !usa;
+      form.querySelector('#t-criterio-piu').hidden = !usa;
     }
 
     var linee = function (txt) { return txt.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
@@ -597,9 +698,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       }
       bozza.metodo.tipo = tipo;
       bozza.metodo.parametri = parametri;
-      bozza.metodo.criterio = f.querySelector('#t-usa-criterio').checked
-        ? { soglia: +q('#t-soglia') || 0, verso: q('#t-verso'), sessioni: +q('#t-sessioni') || 3 }
-        : null;
+      bozza.metodo.criterio = f.querySelector('#t-usa-criterio').checked ? leggiCriterio(f) : null;
 
       if (nuovo) {
         pr.target.push(bozza);

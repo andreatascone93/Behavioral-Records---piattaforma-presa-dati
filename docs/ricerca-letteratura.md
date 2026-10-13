@@ -952,6 +952,32 @@ AntecedentStrategy
 
 ---
 
+## 8. Aggiornamento del 13/10/2026: lacune cliniche
+
+Fonti consultate per completare la versione clinica (criteri di padronanza più ricchi, fedeltà del trattamento, timer DRL e schema multiplo). PubMed Central era di nuovo bloccato da reCAPTCHA per alcune pagine; dove non è stato possibile aprire l'articolo, il riferimento resta [M].
+
+**Prima prova contro tutte le prove.** Lerman, Dittlinger, Fentress & Lanagan (2011) hanno confrontato i dati sulla prima prova con quelli su tutte le prove nelle prove discrete. La prima prova dava una stima grossolana delle prestazioni, sottostimava l'accuratezza su tutte le prove e reagiva più lentamente ai primi miglioramenti; gli autori suggeriscono di registrare un sottoinsieme più ampio, per esempio 3 prove. Nel software la prima prova del giorno è quindi un'opzione del criterio, non il default.
+
+**Componenti dei criteri di padronanza.** McDougale, Richling, Longino & O'Rourke (2020) descrivono come ricerca e pratica usano criteri diversi (la ricerca più accuratezza su meno osservazioni, la pratica il contrario) e notano che spesso i criteri non sono descritti in modo tecnologico. Nel software ogni componente (soglia, unità, sessioni, livello di prompt, prima prova, operatori, setting) è un campo separato e l'obiettivo la scrive per intero.
+
+**Fedeltà del trattamento.** Vollmer, Sloman & St. Peter Pipkin (2008) spiegano perché raccogliere dati di fedeltà e come calcolarli in modo efficiente nella pratica. St. Peter Pipkin, Vollmer & Sloman (2010) distinguono errori di omissione e di commissione durante il DRA e mostrano che hanno effetti diversi sull'efficacia; una tesi successiva della stessa linea di ricerca (Glover, 2021) riporta risultati preliminari secondo cui le omissioni sullo schema del comportamento appropriato pesano di più.
+
+**DRL.** Austin & Bevan (2011) descrivono le tre varianti applicate (risposte distanziate, a intervalli, sessione intera) e valutano quella a sessione intera, la più semplice da applicare in classe.
+
+**Schema multiplo nell'FCT.** Fisher, Greer, Fuhrman & Querim (2015) usano lo schema multiplo con stimoli che segnalano quando la richiesta è rinforzata e quando no, per assottigliare il rinforzo dell'FCT.
+
+Fonti:
+- Lerman, D. C., Dittlinger, L. H., Fentress, G., & Lanagan, T. (2011). A comparison of methods for collecting data on performance during discrete trial teaching. *Behavior Analysis in Practice, 4*(1), 53–62. https://doi.org/10.1007/BF03391775 [V]
+- McDougale, C. B., Richling, S. M., Longino, E. B., & O'Rourke, S. (2020). Mastery criteria and maintenance: A descriptive analysis of applied research procedures. *Behavior Analysis in Practice, 13*, 402–410. https://doi.org/10.1007/s40617-019-00365-2 [V]
+- Vollmer, T. R., Sloman, K. N., & St. Peter Pipkin, C. (2008). Practical implications of data reliability and treatment integrity monitoring. *Behavior Analysis in Practice, 1*, 4–11. https://doi.org/10.1007/BF03391722 [V]
+- St. Peter Pipkin, C., Vollmer, T. R., & Sloman, K. N. (2010). Effects of treatment integrity failures during differential reinforcement of alternative behavior: A translational model. *JABA, 43*(1), 47–70. [M] (titolo e fascicolo trovati nell'indice PMC, articolo non aperto)
+- Glover, K. (2021). *A translational model of treatment integrity failures during differential reinforcement without extinction*. University of Kansas. [V]
+- Austin, J. L., & Bevan, D. (2011). Using differential reinforcement of low rates to reduce children's requests for teacher attention. *JABA, 44*(3), 451–461. https://doi.org/10.1901/jaba.2011.44-451 [V]
+- Fisher, W. W., Greer, B. D., Fuhrman, A. M., & Querim, A. C. (2015). Using multiple schedules during functional communication training to promote rapid transfer of treatment effects. *JABA*. https://doi.org/10.1002/jaba.254 [V parziale: titolo e DOI; autori da memoria]
+- Cummings, A. R., & Carr, J. E. (2009). Evaluating progress in behavioral programs for children with autism spectrum disorders via continuous and discontinuous measurement. *JABA, 42*(1), 57–71. [M]
+
+---
+
 ### Bibliografia sintetica: riferimenti verificati online in questa sessione [V]
 
 - BACB (2020, in vigore 2022). *Ethics Code for Behavior Analysts*. https://bacb.com/wp-content/ethics-code-for-behavior-analysts/
@@ -963,5 +989,6 @@ AntecedentStrategy
 - Kunnavatana et al. (2018). https://doi.org/10.1002/jaba.443
 - Tiger, Hanley & Bruzek (2008). https://doi.org/10.1007/BF03391716
 - Williams & Vollmer (2015). https://doi.org/10.1016/j.ridd.2014.10.003 (DOI)
+- Aggiornamento del 13/10/2026: Lerman et al. (2011), McDougale et al. (2020), Vollmer, Sloman & St. Peter Pipkin (2008), Glover (2021), Austin & Bevan (2011), Fisher et al. (2015, titolo e DOI). Vedi la sezione 8.
 
 Tutti gli altri riferimenti sono marcati [M] o "(non verificato)" nel testo. Sono letteratura classica e ampiamente citata, ma i dettagli bibliografici (pagine, DOI) vanno ricontrollati prima di un uso formale.

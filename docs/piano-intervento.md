@@ -35,6 +35,16 @@ Ogni fase può avere tre regole, valutate sui dati sincronizzati:
 - **ritorno alla fase precedente**: se un target supera una soglia per N sessioni consecutive, il grafico propone di tornare allo step prima (Hagopian et al., 2011; Greer et al., 2016) [M];
 - **stallo**: dopo N sessioni nella fase senza criteri raggiunti, il grafico segnala di rivedere il programma (BACB Ethics Code 2.18).
 
+### Criteri di padronanza più ricchi
+
+Il criterio di un target, e quello proprio di una fase, può chiedere più di soglia, verso e sessioni consecutive. Sono le componenti che la [ricerca di letteratura](ricerca-letteratura.md) (sezione 1.8) indica di modellare separatamente:
+
+- **livello di prompt** (prove discrete e task analysis): si sceglie fino a quale prompt una risposta conta, da "solo indipendenti" a "fino al fisico parziale". Il grafico continua a mostrare la percentuale di risposte indipendenti, senza la linea del criterio; il criterio usa la percentuale al livello scelto, che la tabella dei valori mostra in una colonna a parte. Serve a decidere i passi della sfumatura del prompt;
+- **prima prova del giorno** (prove discrete): conta solo la prima prova della prima seduta di ogni giorno, e le sessioni consecutive diventano giorni consecutivi. È il sondaggio a freddo usato spesso nei sondaggi di mantenimento. Lerman et al. (2011) [V] hanno trovato che dà solo una stima grossolana delle prestazioni su tutte le prove e reagisce più lentamente ai primi miglioramenti, per questo è un'opzione e non il default (vedi anche Cummings & Carr, 2009 [M]);
+- **più operatori e più setting**: tra le sessioni consecutive a criterio devono esserci almeno N operatori diversi o N setting diversi, una verifica della generalizzazione di stimolo (Stokes & Baer, 1977 [M]). Se la soglia è raggiunta ma manca un operatore o un setting, il grafico lo dice ("A criterio, manca un altro operatore"). Il setting di una seduta è quello della schedule e si cambia dal telefono, in alto nella seduta.
+
+McDougale et al. (2020) [V] mostrano che nella ricerca e nella pratica i criteri di padronanza differiscono e spesso non sono descritti abbastanza da poterli replicare: per questo il software scrive il criterio per intero nell'obiettivo ("≥ 80 % risposte corrette con prompt verbale o meno intrusivo per 3 sessioni consecutive, con almeno 2 operatori diversi").
+
 ## Conseguenze programmate
 
 Una conseguenza è una riga: target, procedura, parametri. Le procedure e i parametri obbligatori:
@@ -62,11 +72,45 @@ La scheda **Preferenze** registra per ogni paziente le valutazioni con quattro m
 
 La valutazione più recente compare nell'editor delle fasi: i campi "Cosa" del rinforzatore propongono gli stimoli, e un avviso segnala quando ha più di 30 giorni, perché le preferenze cambiano nel tempo (Hanley, Iwata & Roscoe, 2006) [M].
 
-## In seduta: conseguenze e timer DRO
+## In seduta: conseguenze e timer
 
-Sul telefono, sotto ogni target, le conseguenze della fase in corso hanno un tasto **Conseguenza data** che registra quando l'operatore l'ha consegnata, con il conteggio della seduta. È il primo passo verso la misura della fedeltà del trattamento.
+Sul telefono, sotto ogni target, le conseguenze della fase in corso hanno un tasto **Conseguenza data** che registra quando l'operatore l'ha consegnata, con il conteggio della seduta. Per l'estinzione c'è invece **Rinforzato per errore**: segna quando il comportamento problema ha ricevuto il rinforzatore per sbaglio. Nell'FCT, DRA e DRI la scheda del problema mostra "Rinforzo al problema dato" se il problema è ancora rinforzato (schemi concorrenti), altrimenti "Problema rinforzato per errore" quando la fase non ha una riga di estinzione a parte. Questi tasti alimentano la fedeltà del trattamento.
 
-Per il **DRO** c'è un timer. A intervallo intero, fisso o variabile, il comportamento azzera il timer (o fa perdere l'intervallo, se l'azzeramento è spento); a fine intervallo il telefono vibra e chiede di dare il rinforzo. Nel DRO momentaneo, a ogni scadenza chiede se il comportamento è presente in quel momento. Il timer si ricostruisce dagli eventi, quindi regge offline e alla riapertura della seduta. Questi eventi non entrano nelle misure del comportamento e "Annulla ultimo" non li tocca: hanno un annulla dedicato.
+Per il **DRO** c'è un timer. A intervallo intero, fisso o variabile, il comportamento azzera il timer (o fa perdere l'intervallo, se l'azzeramento è spento); a fine intervallo il telefono vibra e chiede di dare il rinforzo. Nel DRO momentaneo, a ogni scadenza chiede se il comportamento è presente in quel momento.
+
+Per il **DRL** il telefono segue le tre varianti (Deitz & Repp, 1973 [M]; Austin & Bevan, 2011 [V]):
+
+- **sessione intera**: conta le risposte rispetto al limite e ricorda di dare il rinforzo a fine seduta se il comportamento è rimasto entro il limite;
+- **a intervalli**: dall'avvio divide la seduta in intervalli; a fine intervallo, se le risposte sono rimaste entro il limite, vibra e chiede di dare il rinforzo;
+- **risposte distanziate**: mostra quanto manca perché una risposta sia abbastanza distante dalla precedente (IRT minimo); quando arriva una risposta distanziata chiede di rinforzarla.
+
+Per lo **schema multiplo segnalato** (Hanley, Iwata & Thompson, 2001 [M]; Fisher et al., 2015 [V]) il timer alterna la componente con rinforzo (SD) e quella senza (SΔ), partendo dall'SD. Il riquadro è verde con lo stimolo da mostrare durante l'SD, rosso durante l'SΔ; a ogni cambio il telefono vibra, così l'operatore cambia lo stimolo (per esempio il cartellino).
+
+I timer si ricostruiscono dagli eventi, quindi reggono offline e alla riapertura della seduta. Questi eventi non entrano nelle misure del comportamento e "Annulla ultimo" non li tocca: hanno un annulla dedicato.
+
+## Fedeltà del trattamento
+
+La fedeltà del trattamento dice quanto le conseguenze segnate in seduta corrispondono a quelle previste dalla fase. Si calcola per **occasioni**: ogni momento in cui il piano chiedeva di dare, o di non dare, una conseguenza (Vollmer, Sloman & St. Peter Pipkin, 2008 [V]). Gli errori sono di due tipi (St. Peter Pipkin, Vollmer & Sloman, 2010 [M]):
+
+- **omissione**: la conseguenza era dovuta e non è stata segnata;
+- **commissione**: una conseguenza data quando non era dovuta, compreso il comportamento problema rinforzato durante l'estinzione.
+
+Fedeltà = occasioni corrette / occasioni × 100, per conseguenza e per seduta.
+
+| Procedura | Occasioni | Errori |
+| --- | --- | --- |
+| Rinforzo positivo o negativo, token, alternativa di FCT/DRA/DRI con schema continuo o a rapporto fisso | Le consegne dovute dalle risposte contate (occorrenze, risposte di latenza, prove corrette) | In meno: omissioni; in più: commissioni |
+| Schema multiplo | Come sopra per le risposte in SD; ogni risposta in SΔ è un'occasione di non rinforzare | Una consegna in SΔ è una commissione |
+| Schemi concorrenti | Anche il problema ha le sue consegne dovute, secondo il suo schema | Come sopra |
+| Estinzione | Ogni occorrenza del problema | "Rinforzato per errore" è una commissione |
+| DRO | Intervalli conclusi (intero) o controlli conclusi (momentaneo) | Rinforzo dovuto e non dato, controllo non segnato |
+| DRL | La fine seduta (sessione intera), gli intervalli conclusi, le risposte distanziate | Rinforzo dovuto e non dato; rinforzo dato oltre il limite |
+
+Non sono calcolabili dagli eventi gli schemi a intervallo o variabili (FI, VI, VR, FT, VT), il DRH, il blocco e le procedure restrittive: compaiono come "non calcolabile" e richiedono un osservatore con una checklist. Anche le misure che non contano le singole risposte (durata, intervalli, task analysis) non permettono di calcolare le consegne dovute.
+
+Dove si vede: sul telefono alla fine della seduta, per programma e per conseguenza; sul desktop, nella scheda Grafici, un riquadro per programma con l'ultima seduta, la media delle ultime 10 e il loro andamento, e nella scheda Sessioni dentro il registro degli eventi. Sotto l'80% il riquadro diventa arancione e suggerisce di verificare come viene applicato il piano prima di cambiarlo. L'80% è una convenzione del software, non un valore della letteratura.
+
+Limiti da tenere presenti: i dati li segna lo stesso operatore che applica il piano, quindi la percentuale misura la coerenza della registrazione oltre che dell'applicazione; un osservatore indipendente resta il metodo più affidabile. Il conteggio è per seduta, non prova per prova: un rinforzo dato alla risposta sbagliata ma nel numero giusto non risulta errore.
 
 ## Sicurezza e consenso
 
@@ -94,13 +138,12 @@ Per partire velocemente: **FCT con estinzione e assottigliamento** (baseline, FC
 
 ## Cosa resta fuori
 
-Fatto dopo la prima versione: funzioni sintetizzate (IISCA), i tre schemi del token, criteri per fase, ritorno allo step precedente e stallo, valutazione delle preferenze, timer DRO e registro delle conseguenze sul telefono, piano di crisi, consenso e assenso.
+Fatto dopo la prima versione: funzioni sintetizzate (IISCA), i tre schemi del token, criteri per fase, ritorno allo step precedente e stallo, valutazione delle preferenze, timer DRO e registro delle conseguenze sul telefono, piano di crisi, consenso e assenso. Poi: criteri di padronanza per livello di prompt, prima prova del giorno, più operatori e setting; fedeltà del trattamento in percentuale; timer per il DRL e per lo schema multiplo segnalato.
 
 Ancora da fare:
 
-- criteri di padronanza più ricchi: livello di prompt richiesto, prima prova del giorno, più operatori o setting;
-- fedeltà del trattamento come misura: confronto tra conseguenze programmate e registrate, con percentuale per seduta;
-- timer per il DRL e per lo schema multiplo segnalato (SD e SΔ) sul telefono;
+- fedeltà per le procedure non calcolabili dagli eventi (schemi a intervallo o variabili, DRH, procedure restrittive) e fedeltà dell'insegnamento (prompt, ritardo, correzione dell'errore): una checklist per l'osservatore;
+- accordo tra osservatori (IOA) sulle misure del comportamento;
 - verificare i riferimenti marcati [M], qui e nella ricerca di letteratura, prima di un uso formale.
 
 Nota sul criterio di padronanza: Richling, Williams & Carr (2019) hanno trovato un mantenimento scarso con l'80% per 3 sessioni rispetto al 90% e al 100%. Per questo il default per i nuovi target è passato al 90% per 3 sessioni (scelta di Andrea, 13 ottobre 2026); i target esistenti mantengono il loro criterio.

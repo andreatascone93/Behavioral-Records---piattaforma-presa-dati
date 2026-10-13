@@ -386,3 +386,24 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
 .sicurezza { border: 1px solid var(--linea); border-radius: var(--r-piccolo); padding: 0.75rem 0.9rem; display: grid; gap: 0.5rem; }
 .sicurezza-testa { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .sicurezza-testa h3 { font-size: 1rem; }
+
+/* Fedeltà del trattamento */
+.fedelta-pannello {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--r-piccolo);
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+}
+.fedelta-pannello.sotto { border-color: var(--attenzione); background: var(--attenzione-tenue); }
+.fedelta-testo { display: grid; gap: 0.25rem; min-width: 0; flex: 1 1 22rem; }
+.fedelta-testo p { margin: 0; }
+.fedelta-testo summary { cursor: pointer; color: var(--penna); font-weight: 700; }
+.fedelta-testo ul, .fedelta-sessione ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.fedelta-mini { width: 160px; flex-shrink: 0; }
+.fedelta-sessione { margin-bottom: 0.6rem; font-size: 0.88rem; }

@@ -275,3 +275,16 @@ body { font-size: 16px; }
 .crisi { border: 1px solid var(--critico); border-radius: var(--r-piccolo); padding: 0.45rem 0.6rem; font-size: 0.86rem; }
 .crisi summary { cursor: pointer; font-weight: 700; color: var(--critico); min-height: 32px; display: flex; align-items: center; }
 .crisi p { margin: 0.3rem 0 0; }
+
+/* Errori di commissione, schema multiplo segnalato, DRL, setting, fedeltà */
+.btn-errore { color: var(--critico); border-color: color-mix(in srgb, var(--critico) 45%, var(--linea)); }
+.multiplo { display: grid; gap: 0.4rem; }
+.multiplo.attivo { border-radius: var(--r-piccolo); padding: 0.5rem 0.6rem; border-left: 6px solid var(--bene); background: var(--bene-tenue); }
+.multiplo.attivo.sdelta { border-left-color: var(--critico); background: var(--critico-tenue); }
+.multiplo-componente { margin: 0; font-size: 0.95rem; }
+.multiplo.sd .multiplo-componente strong { color: var(--bene); }
+.multiplo.sdelta .multiplo-componente strong { color: var(--critico); }
+.dro.oltre .dro-riga { color: var(--attenzione); }
+.seduta-setting { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0 0 0.6rem; }
+.fedelta-righe { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.2rem; font-size: 0.85rem; }
+.numero-medio.sotto { color: var(--attenzione); }

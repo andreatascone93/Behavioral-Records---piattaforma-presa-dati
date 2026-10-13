@@ -7,7 +7,7 @@
  */
 'use strict';
 
-var VERSIONE = 'br-app-1';
+var VERSIONE = 'br-app-2';
 var FONT = 'br-font-1';
 var FILE = [
   './',
@@ -21,6 +21,7 @@ var FILE = [
   'css/mobile.css',
   'js/modello.js',
   'js/piano.js',
+  'js/fedelta.js',
   'js/dati-finti.js',
   'js/deposito.js',
   'js/archivio.js',

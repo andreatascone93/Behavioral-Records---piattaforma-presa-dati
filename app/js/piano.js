@@ -618,9 +618,12 @@
   // ---- Conseguenze in seduta (telefono) ---------------------------------------
   // Gli eventi di tipo 'conseguenza' registrano cosa l'operatore ha fatto
   // secondo il piano: valore { contingenzaId, procedura, azione }.
-  // azione: 'data' (conseguenza consegnata), 'avvio' e 'ferma' (timer DRO),
-  // 'rinforzo' (DRO a intervallo intero), 'momento' (DRO momentaneo, con
-  // indice e presente). Non entrano nel calcolo delle misure.
+  // azione: 'data' (conseguenza consegnata), 'avvio' e 'ferma' (timer di DRO,
+  // DRL e schema multiplo), 'rinforzo' (DRO a intervallo intero e DRL, con
+  // indice per il DRL a intervalli), 'momento' (DRO momentaneo, con indice e
+  // presente), 'errore' (problema rinforzato per errore durante l'estinzione:
+  // errore di commissione per la fedeltà del trattamento). Non entrano nel
+  // calcolo delle misure.
 
   // Fattori dell'intervallo variabile: media 1, fissi per riproducibilità.
   var FATTORI_VARIABILE = [0.5, 1.5, 1, 0.75, 1.25, 1];
@@ -707,9 +710,127 @@
     return out;
   }
 
-  // Quante volte una conseguenza è stata consegnata in seduta.
-  function conteggioConsegne(eventi, contingenzaId) {
-    return conseguenzeDi(eventi, contingenzaId).filter(function (e) { return e.valore.azione === 'data'; }).length;
+  // L'avvio del timer di una conseguenza, se a fine eventi il timer è acceso.
+  function avvioAttivo(c, eventi) {
+    var comandi = conseguenzeDi(eventi, c.id).filter(function (e) { return e.valore.azione === 'avvio' || e.valore.azione === 'ferma'; });
+    var ultimo = comandi[comandi.length - 1];
+    return ultimo && ultimo.valore.azione === 'avvio' ? ultimo : null;
+  }
+
+  function eRinforzoDi(e, c) {
+    return e.tipo === 'conseguenza' && e.valore && e.valore.contingenzaId === c.id && e.valore.azione === 'rinforzo';
+  }
+
+  /*
+   * Timer del DRL (Deitz & Repp, 1973; Austin & Bevan, 2011).
+   *   sessione: nessun timer; il rinforzo si dà a fine seduta se il
+   *     comportamento non ha superato il limite.
+   *   intervalli: dall'avvio la seduta è divisa in intervalli; a fine
+   *     intervallo il rinforzo è dovuto se il comportamento è rimasto entro il
+   *     limite in quell'intervallo. Il telefono chiede solo dell'ultimo
+   *     intervallo concluso; quelli dovuti e non segnati sono saltati.
+   *   distanziate: una risposta è rinforzata se arriva almeno intervalloSec
+   *     dopo la precedente (o dopo l'avvio). Il rinforzo resta dovuto finché
+   *     l'operatore non lo segna; se prima arriva un'altra risposta è mancato.
+   * eventi: quelli del comportamento, con le conseguenze registrate.
+   */
+  function statoDrl(c, eventi, ora) {
+    var p = c.parametri || {};
+    var variante = VARIANTI.varianteDrl[p.variante] ? p.variante : 'sessione';
+    var base = Math.max(1, +p.intervalloSec || 60) * 1000;
+    var limite = Math.max(0, +p.limite || 0);
+    var rinforzi = conseguenzeDi(eventi, c.id).filter(function (e) { return e.valore.azione === 'rinforzo'; }).length;
+    var out = { variante: variante, limite: limite, intervalloMs: base, rinforzi: rinforzi, attivo: false };
+    if (variante === 'sessione') {
+      out.risposte = eventi.filter(function (e) { return e.t <= ora && eventoComportamento(e); }).length;
+      out.entro = out.risposte <= limite;
+      return out;
+    }
+    var avvio = avvioAttivo(c, eventi);
+    if (!avvio) return out;
+    out.attivo = true;
+    out.avvio = avvio.t;
+    var dopo = eventi.filter(function (e) { return e.t >= avvio.t && e.t <= ora && e !== avvio; });
+
+    if (variante === 'intervalli') {
+      var k = Math.floor((ora - avvio.t) / base);
+      var conteggi = [];
+      for (var i = 0; i <= k; i++) conteggi.push(0);
+      var segnati = {};
+      dopo.forEach(function (e) {
+        if (eventoComportamento(e)) conteggi[Math.min(Math.floor((e.t - avvio.t) / base), k)]++;
+        else if (eRinforzoDi(e, c)) segnati[e.valore.indice] = true;
+      });
+      var dovuti = [];
+      for (var j = 0; j < k; j++) if (conteggi[j] <= limite) dovuti.push(j);
+      out.indice = k;
+      out.risposte = conteggi[k];
+      out.scadenza = avvio.t + (k + 1) * base;
+      out.restanteMs = out.scadenza - ora;
+      out.conclusi = k;
+      out.dovuti = dovuti.length;
+      out.segnati = dovuti.filter(function (x) { return segnati[x]; }).length;
+      out.domanda = k > 0 && dovuti.indexOf(k - 1) !== -1 && !segnati[k - 1] ? k - 1 : null;
+      out.saltati = dovuti.filter(function (x) { return x < k - 1 && !segnati[x]; }).length;
+      out.persi = k - dovuti.length;
+      return out;
+    }
+
+    var prec = avvio.t, dovuto = false, mancati = 0, qualificate = 0;
+    dopo.forEach(function (e) {
+      if (eventoComportamento(e)) {
+        if (dovuto) mancati++;
+        dovuto = e.t - prec >= base;
+        if (dovuto) qualificate++;
+        prec = e.t;
+      } else if (eRinforzoDi(e, c)) {
+        dovuto = false;
+      }
+    });
+    out.dovuto = dovuto;
+    out.qualificate = qualificate;
+    out.mancati = mancati;
+    out.ultima = prec;
+    out.pronto = ora - prec >= base;
+    out.scadenza = prec + base;
+    out.restanteMs = Math.max(0, prec + base - ora);
+    return out;
+  }
+
+  /*
+   * Schema multiplo segnalato (Hanley, Iwata & Thompson, 2001; Fisher et al.,
+   * 2015): dall'avvio del timer si alternano la componente con rinforzo (SD,
+   * sdSec secondi) e quella senza (SΔ, sdeltaSec secondi), partendo dall'SD.
+   * A ogni cambio il telefono vibra, così l'operatore cambia lo stimolo.
+   */
+  function statoMultiplo(c, eventi, ora) {
+    var s = (c.schema && c.schema.segnalato) || {};
+    var sd = Math.max(1, +s.sdSec || 60) * 1000, sdelta = Math.max(1, +s.sdeltaSec || 60) * 1000;
+    var out = { attivo: false, sdMs: sd, sdeltaMs: sdelta, stimoloSd: s.stimoloSd || 'SD', stimoloSdelta: s.stimoloSdelta || 'SΔ' };
+    var avvio = avvioAttivo(c, eventi);
+    if (!avvio) return out;
+    var trascorso = Math.max(0, ora - avvio.t), ciclo = sd + sdelta, dentro = trascorso % ciclo;
+    out.attivo = true;
+    out.avvio = avvio.t;
+    out.ciclo = Math.floor(trascorso / ciclo);
+    out.componente = dentro < sd ? 'sd' : 'sdelta';
+    out.scadenza = ora + (dentro < sd ? sd - dentro : ciclo - dentro);
+    out.restanteMs = out.scadenza - ora;
+    return out;
+  }
+
+  // Componente dello schema multiplo a un istante: 'sd', 'sdelta', oppure
+  // null se in quel momento il timer era spento.
+  function componenteMultiplo(c, eventi, t) {
+    return statoMultiplo(c, eventi.filter(function (e) { return e.t <= t; }), t).componente || null;
+  }
+
+  // Quante volte una conseguenza è stata consegnata in seduta (azione 'data',
+  // o un'altra azione); targetId limita al target sulla cui scheda è segnata.
+  function conteggioConsegne(eventi, contingenzaId, azione, targetId) {
+    return conseguenzeDi(eventi, contingenzaId).filter(function (e) {
+      return e.valore.azione === (azione || 'data') && (!targetId || e.targetId === targetId);
+    }).length;
   }
 
   function descriviEventoConseguenza(e, contingenza) {
@@ -718,7 +839,10 @@
     switch (v.azione) {
       case 'avvio': return nome + ': timer avviato';
       case 'ferma': return nome + ': timer fermato';
-      case 'rinforzo': return nome + ': rinforzo dato a fine intervallo';
+      case 'rinforzo':
+        if (v.procedura === 'drl') return nome + ': rinforzo dato' + (v.indice != null ? ' per l’intervallo ' + (v.indice + 1) : '');
+        return nome + ': rinforzo dato a fine intervallo';
+      case 'errore': return nome + ': problema rinforzato per errore';
       case 'momento': return nome + ' ' + ((v.indice || 0) + 1) + ': ' + (v.presente ? 'presente, niente rinforzo' : 'assente, rinforzo dato');
       default: return nome + ': conseguenza data';
     }
@@ -794,7 +918,8 @@
     fasePrecedente: fasePrecedente, valutaRegole: valutaRegole, descriviRitorno: descriviRitorno,
     METODI_PREFERENZA: METODI_PREFERENZA, PREFERENZE_SCADENZA_GIORNI: PREFERENZE_SCADENZA_GIORNI,
     classificaPreferenze: classificaPreferenze, ultimaPreferenza: ultimaPreferenza, suggerimentiRinforzatori: suggerimentiRinforzatori,
-    eventoComportamento: eventoComportamento, statoDro: statoDro, conteggioConsegne: conteggioConsegne,
+    eventoComportamento: eventoComportamento, statoDro: statoDro, statoDrl: statoDrl,
+    statoMultiplo: statoMultiplo, componenteMultiplo: componenteMultiplo, conteggioConsegne: conteggioConsegne,
     descriviEventoConseguenza: descriviEventoConseguenza,
     CONSENSO_DA: CONSENSO_DA, sicurezzaDi: sicurezzaDi, usaRestrittive: usaRestrittive,
     controlla: controlla
