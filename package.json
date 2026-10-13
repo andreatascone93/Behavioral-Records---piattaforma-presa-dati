@@ -1,0 +1,10 @@
+{
+  "name": "behavioral-records",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Piattaforma per la registrazione dei dati ABA: prototipo clinico",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "npx --yes serve@14.2.6 prototipo"
+  }
+}

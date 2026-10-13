@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Behavioral Records · Desktop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/tema.css">
+  <link rel="stylesheet" href="css/desktop.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marchio">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Behavioral Records</span>
+    </div>
+    <div class="contesto" role="group" aria-label="Contesto">
+      <button class="contesto-btn attivo" type="button" aria-pressed="true">Clinica</button>
+      <button class="contesto-btn" type="button" disabled title="Arriva dopo, con la stessa struttura">Sperimentale</button>
+    </div>
+    <div class="barra-destra">
+      <span id="stato-sync" class="pillola"></span>
+      <a class="btn" href="mobile.html">Apri il telefono</a>
+      <button class="btn btn-piatto" type="button" data-azione="ripristina">Ripristina dati finti</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside class="elenco" aria-label="Pazienti">
+      <div class="elenco-testa">
+        <span class="etichetta">Pazienti</span>
+        <button class="btn btn-piatto" type="button" data-azione="nuovo-paziente">+ Nuovo</button>
+      </div>
+      <nav id="elenco-pazienti"></nav>
+      <p class="nota-prototipo">Prototipo con dati inventati. Le modifiche restano solo in questo browser.</p>
+    </aside>
+
+    <main id="principale" class="principale"></main>
+  </div>
+
+  <script src="js/modello.js"></script>
+  <script src="js/dati-finti.js"></script>
+  <script src="js/archivio.js"></script>
+  <script src="js/grafico.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/desktop.js"></script>
+</body>
+</html>
