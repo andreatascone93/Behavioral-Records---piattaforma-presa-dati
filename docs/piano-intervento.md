@@ -76,4 +76,4 @@ Previsto dalla letteratura ma non ancora nel prototipo:
 - valutazione delle preferenze (paired-stimulus, MSWO), piano di crisi, consenso e assenso, fedeltà del trattamento;
 - sul telefono: un timer DRO e un registro di quando la conseguenza è stata data.
 
-Nota sul criterio di padronanza: Richling, Williams & Carr (2019) hanno trovato un mantenimento scarso con l'80% per 3 sessioni rispetto al 90% e al 100%. Il default resta 80% (confermato da Andrea), ma è una scelta da rivedere.
+Nota sul criterio di padronanza: Richling, Williams & Carr (2019) hanno trovato un mantenimento scarso con l'80% per 3 sessioni rispetto al 90% e al 100%. Per questo il default per i nuovi target è passato al 90% per 3 sessioni (scelta di Andrea, 13 ottobre 2026); i target esistenti mantengono il loro criterio.

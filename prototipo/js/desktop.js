@@ -424,7 +424,7 @@
           '<label class="spunta"><input id="t-usa-criterio" type="checkbox"' + (c ? ' checked' : '') + '> Usa un criterio</label>' +
           '<div class="campi-riga" id="t-criterio">' +
             '<div class="campo"><label for="t-verso">Valore</label><select id="t-verso"><option value="almeno"' + (c && c.verso === 'almeno' ? ' selected' : '') + '>almeno</option><option value="al_massimo"' + (c && c.verso === 'al_massimo' ? ' selected' : '') + '>al massimo</option></select></div>' +
-            '<div class="campo"><label for="t-soglia">Soglia <span class="tenue" id="t-unita"></span></label><input id="t-soglia" type="number" step="any" min="0" value="' + (c ? c.soglia : 80) + '"></div>' +
+            '<div class="campo"><label for="t-soglia">Soglia <span class="tenue" id="t-unita"></span></label><input id="t-soglia" type="number" step="any" min="0" value="' + (c ? c.soglia : 90) + '"></div>' +
             '<div class="campo"><label for="t-sessioni">Sessioni consecutive</label><input id="t-sessioni" type="number" min="1" max="10" value="' + (c ? c.sessioni : 3) + '"></div>' +
           '</div>' +
         '</fieldset>' +
