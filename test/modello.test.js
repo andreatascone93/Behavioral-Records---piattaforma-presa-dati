@@ -3,9 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const M = require('../prototipo/js/modello.js');
-const datiFinti = require('../prototipo/js/dati-finti.js');
-const archivio = require('../prototipo/js/archivio.js');
+const M = require('../app/js/modello.js');
+const datiFinti = require('../app/js/dati-finti.js');
+const archivio = require('../app/js/archivio.js');
 
 const S = Date.UTC(2026, 9, 12, 9, 0, 0);
 const sessione = { inizio: S, fine: S + 10 * 60000 };
@@ -160,7 +160,7 @@ test('archivio: cambiando solo i parametri le sessioni vecchie usano la loro ver
   assert.deepEqual(archivio.serie(stato, pz, programma, target, {}).map((p) => p.valore), prima);
 });
 
-const piano = require('../prototipo/js/piano.js');
+const piano = require('../app/js/piano.js');
 
 test('piano: descrizioni di schemi e conseguenze', () => {
   assert.equal(piano.descriviSchema({ tipo: 'FR', valore: 3 }), 'FR 3');
