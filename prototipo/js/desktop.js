@@ -146,9 +146,19 @@
           (tabella ? tabellaValori(punti, t) : '') +
         '</article>';
       }).join('');
+      var regole = A.regoleFase(stato, s, pr, { soloSincronizzate: true });
+      var precedente = P.fasePrecedente(pr);
       return '<section class="gruppo">' +
         '<div class="gruppo-testa"><h2>' + esc(pr.nome) + '</h2>' +
         '<span class="pillola penna">Fase: ' + esc(A.nomeFaseCorrente(pr)) + '</span></div>' +
+        (regole.ritorno && precedente
+          ? '<div class="proposta ritorno"><span>Regola di ritorno superata: i dati indicano di tornare a “' + esc(precedente.nome) + '”.</span>' +
+            '<button class="btn" type="button" data-azione="avvia-fase-piano" data-programma="' + pr.id + '" data-id="' + precedente.id + '">Torna alla fase</button></div>'
+          : '') +
+        (regole.stallo
+          ? '<div class="proposta stallo"><span>' + regole.sessioni + ' sessioni in questa fase senza criteri raggiunti: rivedi il programma (prompt, rinforzatore, schema).</span>' +
+            '<button class="btn" type="button" data-azione="scheda" data-id="piano">Apri il piano</button></div>'
+          : '') +
         (carte ? '<div class="griglia-grafici">' + carte + '</div>' : '<p class="tenue">Nessun target in questo programma.</p>') +
       '</section>';
     }).join('');

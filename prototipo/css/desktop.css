@@ -359,3 +359,7 @@ legend { font-weight: 700; padding: 0 0.3rem; font-family: var(--f-titoli); }
   .sintesi-target li { grid-template-columns: minmax(0, 1fr); }
 }
 .spunte.colonne { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.uscita p + p { margin-top: 0.2rem; }
+.riga-criterio { display: grid; gap: 0.4rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--griglia); }
+.proposta.ritorno { background: var(--critico-tenue); color: var(--critico); }
+.proposta.stallo { background: var(--attenzione-tenue); color: var(--attenzione); }
