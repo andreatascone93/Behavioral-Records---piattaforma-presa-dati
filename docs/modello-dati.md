@@ -90,7 +90,7 @@ Regole sui conflitti:
 - Se la configurazione cambia sul desktop mentre un telefono è offline, la sessione resta legata alla versione con cui è stata registrata; ogni metodo ha un numero di versione.
 - Due operatori sullo stesso soggetto nella stessa ora producono due sessioni distinte; se una è marcata come osservazione di controllo, serve per l'accordo tra osservatori (IOA).
 
-Nei prototipi dei passi 2 e 3 la sincronizzazione è simulata: i dati restano nel browser e un interruttore "online/offline" mostra cosa succede.
+Nei prototipi dei passi 2 e 3 la sincronizzazione è simulata: i dati restano nel browser e un interruttore "online/offline" mostra cosa succede. Nella versione vera (passo 4) la sincronizzazione con il cloud segue queste stesse regole: vedi [decisione-tecnologica.md](decisione-tecnologica.md#come-funziona-la-sincronizzazione).
 
 ## Output: grafici e riepilogo
 

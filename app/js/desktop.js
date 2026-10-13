@@ -2,13 +2,13 @@
  * Prototipo desktop: configurazione per paziente (programmi, target, metodi
  * di misura, schedule di seduta) e grafici secondo le convenzioni ABA.
  */
-(function () {
+BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
   var M = BR.modello, A = BR.archivio, G = BR.grafico, U = BR.ui, P = BR.piano, D = BR.desktopPiano, DP = BR.desktopPreferenze;
   var esc = U.esc;
 
-  var stato = A.carica();
+  var stato = statoIniziale;
   var vista = {
     soggettoId: U.preferenza('desktop-paziente'),
     scheda: U.preferenza('desktop-scheda') || 'grafici',
@@ -38,6 +38,18 @@
 
   function disegnaStatoSync() {
     var el = document.getElementById('stato-sync');
+    var cloud = A.cloudAttivo();
+    document.querySelector('[data-azione="ripristina"]').hidden = cloud;
+    document.getElementById('nota-dati').textContent = cloud
+      ? 'Le modifiche si sincronizzano con il cloud dello studio.'
+      : 'Dati di esempio. Senza cloud le modifiche restano solo in questo browser.';
+    if (cloud) {
+      var et = BR.pannelloCloud.etichetta(BR.cloud.info());
+      el.className = 'pillola ' + et.classe;
+      el.textContent = et.testo;
+      el.title = '';
+      return;
+    }
     var attesa = A.inAttesa(stato);
     var aperte = stato.sessioni.filter(function (s) { return s.stato === 'aperta'; }).length;
     if (attesa) {
@@ -775,6 +787,7 @@
         vista.sessioneAperta = vista.sessioneAperta === b.getAttribute('data-id') ? null : b.getAttribute('data-id');
         disegna();
         break;
+      case 'cloud': BR.pannelloCloud.apri(); break;
       case 'ripristina':
         U.conferma('Ripristinare i dati finti?', 'Le modifiche fatte in questo browser, comprese le sedute registrate dal telefono, verranno cancellate.', 'Ripristina', 'btn-primario')
           .then(function (ok) {
@@ -805,6 +818,12 @@
     if (!document.querySelector('.velo')) disegna();
   });
 
+  BR.cloud.suCambio(function () { disegnaStatoSync(); });
+
   G.attivaSuggerimenti(document.getElementById('principale'));
   disegna();
-})();
+  return BR.cloud.avvia();
+}).catch(function (e) {
+  if (window.console) console.error(e);
+  document.body.insertAdjacentHTML('afterbegin', '<p class="avviso" role="alert">L’app non è riuscita a partire: ' + BR.ui.esc(e && e.message || String(e)) + '. Ricarica la pagina.</p>');
+});
