@@ -51,6 +51,7 @@
   function genera(oggiInput) {
     var oggi = oggiInput ? new Date(oggiInput) : new Date();
     var rnd = mulberry32(20261013);
+    var rndC = mulberry32(13102026);
     var contatore = 0;
     function id(p) { contatore++; return p + '_' + String(contatore).padStart(5, '0'); }
 
@@ -322,7 +323,7 @@
     var p3imit = {
       id: id('pr'), nome: 'Imitazione motoria', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    var imita = target('Imita azioni con il corpo', 'aumentare', 'dtt', { prove: 10 }, crit(80, 'almeno'), definizioni.imitazione,
+    var imita = target('Imita azioni con il corpo', 'aumentare', 'dtt', { prove: 10 }, Object.assign(crit(80, 'almeno'), { minOperatori: 2 }), definizioni.imitazione,
       { baseline: andamento(rnd, 20, 20, 8), intervento: andamento(rnd, 30, 62, 7) },
       {
         obiettivo: { condizione: 'al tavolo, con l’istruzione “fai così” e il modello dell’adulto' },
@@ -437,14 +438,47 @@
           sess.fasiId[pr.id] = voce.id;
           var kFase = inIntervento ? k - pr._cambio : k;
           var nFase = inIntervento ? piano.sessioni - pr._cambio : pr._cambio;
+          var da = eventi.length;
           pr.target.forEach(function (t) {
             sess.versioniMetodi[t.metodo.id] = 1;
             var v = t._profili[inIntervento ? 'intervento' : 'baseline'](kFase, nFase);
             generaEventi(t, v, sess, S, durMin, function (e) { eventi.push(e); });
           });
+          var fasePiano = pr.piano.fasi.find(function (f) { return f.id === voce.pianoId; });
+          if (inIntervento && fasePiano) generaConseguenze(fasePiano, sess, eventi.slice(da), function (e) { eventi.push(e); });
         });
       });
     });
+
+    // Conseguenze segnate in seduta, con qualche errore di applicazione, così
+    // il desktop mostra la fedeltà del trattamento. Generatore a parte (rndC),
+    // per non cambiare gli altri dati finti.
+    function generaConseguenze(fase, sess, ev, push) {
+      var annullati = {};
+      ev.forEach(function (e) { if (e.tipo === 'annulla') annullati[e.rif] = true; });
+      var validi = ev.filter(function (e) { return e.tipo !== 'annulla' && !annullati[e.id]; });
+      (fase.contingenze || []).forEach(function (c) {
+        var p = c.parametri || {};
+        function segna(targetId, istante, azione) {
+          push({
+            id: id('ev'), sessioneId: sess.id, targetId: targetId, metodoId: null, tipo: 'conseguenza', t: Math.round(istante),
+            valore: { contingenzaId: c.id, procedura: c.procedura, azione: azione }, operatoreId: sess.operatoreId, sincronizzato: true
+          });
+        }
+        if (c.schema && c.schema.tipo === 'CRF' && !c.schema.segnalato && /^(rinforzo_positivo|fct|dra|dri)$/.test(c.procedura)) {
+          var bersaglio = c.procedura === 'rinforzo_positivo' ? c.targetId : p.alternativoId;
+          validi.forEach(function (e) {
+            var risposta = e.tipo === 'occorrenza' || e.tipo === 'risposta' || (e.tipo === 'prova' && e.valore.esito !== 'errore');
+            if (e.targetId === bersaglio && risposta && rndC() < 0.92) segna(bersaglio, e.t + 2000, 'data');
+          });
+        }
+        if (c.procedura === 'estinzione') {
+          validi.forEach(function (e) {
+            if (e.targetId === c.targetId && e.tipo === 'occorrenza' && rndC() < 0.1) segna(c.targetId, e.t + 3000, 'errore');
+          });
+        }
+      });
+    }
 
     function evento(t, sess, tipo, istante, valore) {
       return {

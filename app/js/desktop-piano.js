@@ -411,25 +411,45 @@
     return pr.target.filter(function (t) { return t.ruolo !== 'valutazione'; }).map(function (t) {
       var c = criteri[t.id];
       var unita = M.TIPI[t.metodo.tipo].unita;
+      var conPrompt = t.metodo.tipo === 'dtt' || t.metodo.tipo === 'task_analysis';
       return '<div class="riga-criterio" data-criterio="' + t.id + '">' +
         '<label class="spunta piccolo"><input type="checkbox" data-c-usa' + (c ? ' checked' : '') + '> Criterio proprio per “' + esc(t.nome) + '”</label>' +
         '<div class="campi-riga">' +
           '<div class="campo"><label>Valore</label><select data-c-verso><option value="almeno"' + (c && c.verso === 'almeno' ? ' selected' : '') + '>almeno</option><option value="al_massimo"' + ((c ? c.verso === 'al_massimo' : t.direzione === 'ridurre') ? ' selected' : '') + '>al massimo</option></select></div>' +
           '<div class="campo"><label>Soglia (' + esc(unita) + ')</label><input data-c-soglia type="number" step="any" min="0" value="' + (c ? c.soglia : (t.metodo.criterio ? t.metodo.criterio.soglia : '')) + '"></div>' +
           '<div class="campo"><label>Sessioni</label><input data-c-sessioni type="number" min="1" max="10" value="' + (c ? c.sessioni : 2) + '"></div>' +
-        '</div></div>';
+          (conPrompt ? '<div class="campo"><label>Risposte che contano</label><select data-c-livello>' + LIVELLI_CRITERIO.map(function (l) {
+            return '<option value="' + l[0] + '"' + (((c && c.livelloPrompt) || 'I') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
+          }).join('') + '</select></div>' : '') +
+          '<div class="campo"><label>Operatori, almeno</label><input data-c-op type="number" min="1" max="6" value="' + ((c && c.minOperatori) || 1) + '"></div>' +
+          '<div class="campo"><label>Setting, almeno</label><input data-c-set type="number" min="1" max="6" value="' + ((c && c.minSetting) || 1) + '"></div>' +
+        '</div>' +
+        (t.metodo.tipo === 'dtt' ? '<label class="spunta piccolo"><input type="checkbox" data-c-prima' + (c && c.primaProva ? ' checked' : '') + '> Solo la prima prova del giorno (sondaggi di mantenimento)</label>' : '') +
+        '</div>';
     }).join('');
   }
+
+  var LIVELLI_CRITERIO = [
+    ['I', 'Solo indipendenti'], ['V', 'Fino al verbale'], ['G', 'Fino al gestuale'], ['M', 'Fino al modello'], ['FP', 'Fino al fisico parziale']
+  ];
 
   function leggiCriteriFase(form) {
     var out = {};
     form.querySelectorAll('[data-criterio]').forEach(function (el) {
       if (!el.querySelector('[data-c-usa]').checked) return;
-      out[el.getAttribute('data-criterio')] = {
+      var c = {
         verso: el.querySelector('[data-c-verso]').value,
         soglia: +el.querySelector('[data-c-soglia]').value || 0,
         sessioni: +el.querySelector('[data-c-sessioni]').value || 2
       };
+      var livello = el.querySelector('[data-c-livello]');
+      if (livello && livello.value !== 'I') c.livelloPrompt = livello.value;
+      var prima = el.querySelector('[data-c-prima]');
+      if (prima && prima.checked) { c.primaProva = true; c.soglia = 100; c.verso = 'almeno'; }
+      var op = Math.round(+el.querySelector('[data-c-op]').value || 1), set = Math.round(+el.querySelector('[data-c-set]').value || 1);
+      if (op > 1) c.minOperatori = op;
+      if (set > 1) c.minSetting = set;
+      out[el.getAttribute('data-criterio')] = c;
     });
     return out;
   }

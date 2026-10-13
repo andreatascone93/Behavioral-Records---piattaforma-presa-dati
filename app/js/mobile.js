@@ -6,7 +6,7 @@
 BR.archivio.avvia().then(function (statoIniziale) {
   'use strict';
 
-  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui;
+  var M = BR.modello, P = BR.piano, A = BR.archivio, G = BR.grafico, U = BR.ui, F = BR.fedelta;
   var esc = U.esc;
 
   var stato = statoIniziale;
@@ -120,6 +120,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
         '<button class="btn btn-primario" type="button" data-azione="termina">Termina</button>' +
       '</header>' +
       (!A.online(stato) ? '<div class="avviso">Offline: ogni tocco viene salvato sul telefono.</div>' : '') +
+      '<div class="seduta-setting"><span class="tenue piccolo">Setting: <strong>' + esc(sess.setting || '–') + '</strong></span>' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="setting">Cambia</button></div>' +
       '<div class="strumenti">' + voci(s).map(function (x) { return carta(sess, x.programma, x.target); }).join('') + '</div>';
   }
 
@@ -142,9 +144,13 @@ BR.archivio.avvia().then(function (statoIniziale) {
 
   // Cosa fare dopo il comportamento, secondo la fase del piano in corso, con i
   // tasti per segnare la conseguenza data e il timer per il DRO.
-  function contingenzeDi(sess, pr, t) {
+  function faseDiSeduta(sess, pr) {
     var voce = A.voceDiSessione(pr, sess);
-    var fase = voce && voce.pianoId ? P.fasePianificata(pr, voce.pianoId) : null;
+    return voce && voce.pianoId ? P.fasePianificata(pr, voce.pianoId) : null;
+  }
+
+  function contingenzeDi(sess, pr, t) {
+    var fase = faseDiSeduta(sess, pr);
     if (!fase) return [];
     return (fase.contingenze || []).filter(function (c) {
       return c.targetId === t.id || (c.parametri && c.parametri.alternativoId === t.id);
@@ -176,27 +182,99 @@ BR.archivio.avvia().then(function (statoIniziale) {
     var miei = evValidi(sess, t).filter(function (e) { return e.tipo === 'conseguenza'; });
     return '<ul class="promemoria" aria-label="Conseguenze programmate">' + righe.map(function (c) {
       return '<li><div><strong>' + esc(P.siglaContingenza(c)) + '</strong> ' + esc(P.descriviContingenza(c, tm)) + '</div>' +
-        azioneConseguenza(sess, t, c, tutti) + '</li>';
+        azioneConseguenza(sess, pr, t, c, tutti) + '</li>';
     }).join('') +
     (miei.length ? '<li class="promemoria-annulla"><button class="btn btn-piatto piccolo" type="button" data-azione="annulla-conseguenza" data-id="' + t.id + '">Annulla ultima conseguenza</button></li>' : '') +
     '</ul>';
   }
 
-  function azioneConseguenza(sess, t, c, tutti) {
-    if (c.procedura === 'estinzione') return '';
+  /*
+   * Cosa si può segnare per una conseguenza sulla scheda di un target:
+   * consegne, errori di commissione (problema rinforzato per errore) e i timer
+   * di DRO, DRL e schema multiplo. Servono anche alla fedeltà del trattamento.
+   */
+  function azioneConseguenza(sess, pr, t, c, tutti) {
+    var p = c.parametri || {};
     if (c.procedura === 'dro') return c.targetId === t.id ? bloccoDro(sess, t, c) : '';
-    var n = P.conteggioConsegne(tutti, c.id);
-    return '<div class="consegna"><button class="btn piccolo" type="button" data-azione="conseguenza" data-id="' + t.id + '" data-contingenza="' + c.id + '">Conseguenza data</button>' +
+    if (c.procedura === 'drl') return c.targetId === t.id ? bloccoDrl(sess, t, c) : '';
+    if (c.procedura === 'estinzione') return tasto(t, c, 'errore', 'Rinforzato per errore', tutti);
+    if (/^(fct|dra|dri)$/.test(c.procedura) && t.id === c.targetId && p.alternativoId !== t.id) {
+      // Scheda del comportamento problema.
+      if (p.problema === 'rinforzo') return tasto(t, c, 'data', 'Rinforzo al problema dato', tutti);
+      var fase = faseDiSeduta(sess, pr);
+      var separata = fase && (fase.contingenze || []).some(function (x) { return x.procedura === 'estinzione' && x.targetId === t.id; });
+      return separata ? '' : tasto(t, c, 'errore', 'Problema rinforzato per errore', tutti);
+    }
+    return (c.schema && c.schema.segnalato ? bloccoMultiplo(t, c, tutti) : '') + tasto(t, c, 'data', 'Conseguenza data', tutti);
+  }
+
+  function tasto(t, c, azione, testo, tutti) {
+    var n = P.conteggioConsegne(tutti, c.id, azione, t.id);
+    return '<div class="consegna"><button class="btn piccolo' + (azione === 'errore' ? ' btn-errore' : '') + '" type="button" data-azione="conseguenza" data-tipo="' + azione + '" data-id="' + t.id + '" data-contingenza="' + c.id + '">' + esc(testo) + '</button>' +
       (n ? '<span class="dato tenue">× ' + n + '</span>' : '') + '</div>';
   }
 
   function contoAllaRovescia(scadenza) {
-    return '<span class="dato dro-tempo" data-live="dro" data-scadenza="' + scadenza + '">' + U.mmss(scadenza - Date.now()) + '</span>';
+    return '<span class="dato dro-tempo" data-live="timer" data-scadenza="' + scadenza + '">' + U.mmss(scadenza - Date.now()) + '</span>';
+  }
+
+  function secondi(ms) { return Math.round(ms / 1000) + ' s'; }
+
+  function nomeRinforzatore(c) {
+    return c.rinforzatore && c.rinforzatore.descrizione ? c.rinforzatore.descrizione : 'il rinforzatore';
+  }
+
+  // Schema multiplo segnalato: quale stimolo mostrare adesso e quando cambiarlo.
+  function bloccoMultiplo(t, c, tutti) {
+    var st = P.statoMultiplo(c, tutti, Date.now());
+    var att = ' data-id="' + t.id + '" data-contingenza="' + c.id + '"';
+    if (!st.attivo) {
+      return '<div class="multiplo"><button class="btn piccolo" type="button" data-azione="timer-avvia"' + att + '>Avvia schema multiplo: ' +
+        secondi(st.sdMs) + ' con ' + esc(st.stimoloSd) + ', ' + secondi(st.sdeltaMs) + ' con ' + esc(st.stimoloSdelta) + '</button></div>';
+    }
+    var sd = st.componente === 'sd';
+    return '<div class="multiplo attivo ' + (sd ? 'sd' : 'sdelta') + '">' +
+      '<p class="multiplo-componente"><strong>' + (sd ? 'Rinforzo disponibile' : 'Niente rinforzo') + '</strong> · mostra ' + esc(sd ? st.stimoloSd : st.stimoloSdelta) + '</p>' +
+      '<p class="dro-riga">' + (sd ? 'Passa a ' + esc(st.stimoloSdelta) : 'Torna a ' + esc(st.stimoloSd)) + ' tra ' + contoAllaRovescia(st.scadenza) + '</p>' +
+      '<div class="dro-piede"><span class="dato tenue">Ciclo ' + (st.ciclo + 1) + '</span>' +
+      '<button class="btn btn-piatto piccolo" type="button" data-azione="timer-ferma"' + att + '>Ferma timer</button></div></div>';
+  }
+
+  // DRL: limite per seduta, per intervallo o tempo minimo tra le risposte.
+  function bloccoDrl(sess, t, c) {
+    var st = P.statoDrl(c, evValidi(sess, t), Date.now());
+    var rinforzatore = nomeRinforzatore(c);
+    var att = ' data-id="' + t.id + '" data-contingenza="' + c.id + '"';
+    var conto = st.rinforzi ? '<span class="dato tenue">Rinforzi: ' + st.rinforzi + '</span>' : '';
+    if (st.variante === 'sessione') {
+      return '<div class="dro' + (st.entro ? '' : ' oltre') + '"><p class="dro-riga">Risposte: <span class="dato">' + st.risposte + '</span> su un massimo di ' + st.limite + '. ' +
+        (st.entro ? 'Se resta entro il limite, a fine seduta dai ' + esc(rinforzatore) + '.' : 'Limite superato: niente rinforzo in questa seduta.') + '</p>' +
+        '<div class="dro-piede">' + conto + (st.entro && !st.rinforzi ? '<button class="btn piccolo" type="button" data-azione="drl-rinforzo"' + att + '>Rinforzo dato a fine seduta</button>' : '') + '</div></div>';
+    }
+    if (!st.attivo) {
+      return '<div class="dro"><button class="btn piccolo" type="button" data-azione="timer-avvia"' + att + '>Avvia timer DRL (' + secondi(st.intervalloMs) + ')</button>' + conto + '</div>';
+    }
+    var html = '<div class="dro attivo' + (st.domanda != null || st.dovuto ? ' chiede' : '') + '">';
+    if (st.variante === 'intervalli') {
+      if (st.domanda != null) {
+        html += '<p class="dro-domanda">Intervallo ' + (st.domanda + 1) + ' entro il limite: dai ' + esc(rinforzatore) + '.</p>' +
+          '<div class="dro-scelte"><button class="btn btn-primario" type="button" data-azione="drl-rinforzo" data-indice="' + st.domanda + '"' + att + '>Rinforzo dato</button></div>';
+      }
+      html += '<p class="dro-riga">In questo intervallo <span class="dato">' + st.risposte + '</span> su un massimo di ' + st.limite +
+        (st.risposte > st.limite ? ', limite superato' : '') + '. Finisce tra ' + contoAllaRovescia(st.scadenza) + '</p>';
+    } else if (st.dovuto) {
+      html += '<p class="dro-domanda">Risposta distanziata: dai ' + esc(rinforzatore) + '.</p>' +
+        '<div class="dro-scelte"><button class="btn btn-primario" type="button" data-azione="drl-rinforzo"' + att + '>Rinforzo dato</button></div>';
+    } else {
+      html += '<p class="dro-riga">' + (st.pronto ? 'Da adesso la prossima risposta va rinforzata.' : 'La prossima risposta va rinforzata solo dopo ' + contoAllaRovescia(st.scadenza)) + '</p>';
+    }
+    return html + '<div class="dro-piede">' + conto +
+      '<button class="btn btn-piatto piccolo" type="button" data-azione="timer-ferma"' + att + '>Ferma timer</button></div></div>';
   }
 
   function bloccoDro(sess, t, c) {
     var st = P.statoDro(c, evValidi(sess, t), Date.now());
-    var rinforzatore = c.rinforzatore && c.rinforzatore.descrizione ? c.rinforzatore.descrizione : 'il rinforzatore';
+    var rinforzatore = nomeRinforzatore(c);
     var att = ' data-id="' + t.id + '" data-contingenza="' + c.id + '"';
     var conto = st.rinforzi ? '<span class="dato tenue">Rinforzi: ' + st.rinforzi + '</span>' : '';
     if (!st.attivo) {
@@ -400,8 +478,30 @@ BR.archivio.avvia().then(function (statoIniziale) {
         return '<div class="riga-valore"><div><strong>' + esc(x.target.nome) + '</strong><span class="tenue piccolo">media delle 5 precedenti: ' + M.formatta(media, x.target.metodo.tipo) + '</span></div>' +
           '<div class="valore-destra"><span class="dato numero-medio">' + (questo ? M.formatta(questo.valore, x.target.metodo.tipo) : '–') + '</span><span class="tenue piccolo">' + esc(tipo.unita) + '</span></div></div>';
       }).join('') + '</div>' +
+      fedeltaFine(s, sess) +
       '<div class="azioni-fine"><button class="btn btn-primario grande" type="button" data-azione="riepilogo" data-id="' + s.id + '">Vedi il riepilogo</button>' +
       '<button class="btn grande" type="button" data-azione="oggi">Torna ai pazienti</button></div>';
+  }
+
+  // Fedeltà del trattamento della seduta, programma per programma.
+  function fedeltaFine(s, sess) {
+    var ev = A.eventiDi(stato, sess.id);
+    var blocchi = s.programmi.map(function (pr) {
+      var r = F.seduta(faseDiSeduta(sess, pr), pr.target, ev, sess);
+      // Niente da dire se nessuna conseguenza aveva occasioni in questa seduta.
+      if (r.percentuale == null && r.righe.every(function (x) { return x.valutabile; })) return '';
+      return '<div class="riga-valore fedelta"><div><strong>' + esc(pr.nome) + '</strong>' +
+        '<ul class="fedelta-righe">' + r.righe.map(function (x) {
+          return '<li><span class="dato">' + esc(x.sigla) + '</span> ' + (x.valutabile
+            ? (x.opportunita ? F.formatta(x.percentuale) + ' · ' + x.corrette + ' su ' + x.opportunita + ' · ' + esc(F.descriviErrori(x)) : 'nessuna occasione in questa seduta')
+            : '<span class="tenue">' + esc(x.nota) + '</span>') + '</li>';
+        }).join('') + '</ul></div>' +
+        '<div class="valore-destra"><span class="dato numero-medio' + (r.percentuale != null && r.percentuale < F.SOGLIA ? ' sotto' : '') + '">' + F.formatta(r.percentuale) + '</span><span class="tenue piccolo">fedeltà</span></div></div>';
+    }).join('');
+    if (!blocchi) return '';
+    return '<h2 class="sezione">Fedeltà del trattamento</h2>' +
+      '<p class="tenue piccolo">Conseguenze segnate rispetto a quelle previste dal piano: omissione = dovuta e non segnata, commissione = data quando non era dovuta.</p>' +
+      '<div class="elenco-valori">' + blocchi + '</div>';
   }
 
   // ---- Schermo: riepilogo configurabile ----------------------------------------
@@ -465,7 +565,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       var perc = /%/.test(tipo.unita);
       var critHtml = !c ? '' : c.raggiunto ? '<span class="pillola bene">Criterio raggiunto</span>'
         : c.fase === 'baseline' ? '<span class="pillola">Baseline</span>'
-        : c.consecutive ? '<span class="pillola attenzione">' + c.consecutive + ' di ' + (c.consecutive + c.mancano) + ' a criterio</span>'
+        : c.consecutive ? '<span class="pillola attenzione">' + esc(M.statoCriterioBreve(c)) + '</span>'
         : '<span class="pillola">Sotto criterio</span>';
       return '<article class="carta riepilogo-carta">' +
         '<div class="rc-testa"><h3>' + esc(t.nome) + '</h3>' + critHtml + '</div>' +
@@ -508,7 +608,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
         var ms = +el.getAttribute('data-ms');
         var trascorso = (ora - +el.getAttribute('data-avvio')) % ms;
         el.style.width = (trascorso / ms) * 100 + '%';
-      } else if (k === 'dro') {
+      } else if (k === 'timer') {
         var resta = +el.getAttribute('data-scadenza') - ora;
         el.textContent = U.mmss(resta);
         if (resta <= 0) scaduto = true;
@@ -519,7 +619,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
         el.textContent = k === 'durata' ? U.mmss(r.valore * 60000) : M.formatta(tassoLive(sess, r.dettagli.conteggio), 'frequenza');
       }
     });
-    // Un timer DRO è scaduto: rinforzo dovuto o controllo momentaneo.
+    // Un timer è scaduto: rinforzo dovuto, controllo momentaneo o cambio di
+    // componente dello schema multiplo.
     if (scaduto && !document.querySelector('.velo')) { vibra([120, 60, 120]); disegna(); return; }
     // Ridisegna quando un intervallo finisce (nuova domanda da fare).
     var finiti = 0;
@@ -549,6 +650,31 @@ BR.archivio.avvia().then(function (statoIniziale) {
   }
 
   // ---- Azioni ------------------------------------------------------------------
+
+  // Il setting della seduta: conta per i criteri che chiedono la padronanza
+  // in più setting. Propone quelli già usati e i luoghi di generalizzazione.
+  function cambiaSetting() {
+    var sess = sessione(), s = sog();
+    if (!sess || !s) return;
+    var noti = [s.schedule.setting];
+    A.sessioniDi(stato, s.id, {}).forEach(function (x) { noti.push(x.setting); });
+    A.targetDi(s).forEach(function (x) { ((x.target.generalizzazione && x.target.generalizzazione.luoghi) || []).forEach(function (l) { noti.push(l); }); });
+    noti = noti.filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    U.finestra('Setting della seduta',
+      '<div class="campo"><label for="m-setting">Dove si svolge la seduta</label><input id="m-setting" type="text" list="m-setting-elenco" value="' + esc(sess.setting || '') + '"></div>' +
+      '<datalist id="m-setting-elenco">' + noti.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
+      '<p class="tenue piccolo">Serve ai criteri di padronanza che chiedono più setting diversi.</p>',
+      [{ testo: 'Annulla', valore: null }, { testo: 'Salva', classe: 'btn-primario', valore: true, invio: true }]
+    ).then(function (r) {
+      if (!r) return;
+      var v = r.form.querySelector('#m-setting').value.trim();
+      if (!v) return;
+      sess.setting = v;
+      salva();
+      disegna();
+      U.toast('Setting: ' + v);
+    });
+  }
 
   function targetDaId(id) { var x = A.trovaTarget(sog(), id); return x ? x.target : null; }
 
@@ -639,15 +765,22 @@ BR.archivio.avvia().then(function (statoIniziale) {
         disegna();
         U.toast('Ultima conseguenza annullata');
         break;
-      case 'conseguenza': case 'dro-avvia': case 'dro-ferma': case 'dro-rinforzo': case 'dro-momento': {
+      case 'conseguenza': case 'dro-avvia': case 'dro-ferma': case 'dro-rinforzo': case 'dro-momento':
+      case 'timer-avvia': case 'timer-ferma': case 'drl-rinforzo': {
         var cid = b.getAttribute('data-contingenza');
-        var azione = { conseguenza: 'data', 'dro-avvia': 'avvio', 'dro-ferma': 'ferma', 'dro-rinforzo': 'rinforzo', 'dro-momento': 'momento' }[az];
-        var valore = { contingenzaId: cid, procedura: az === 'conseguenza' ? procedura(cid) : 'dro', azione: azione };
+        var azione = {
+          conseguenza: b.getAttribute('data-tipo') || 'data', 'dro-avvia': 'avvio', 'dro-ferma': 'ferma', 'dro-rinforzo': 'rinforzo', 'dro-momento': 'momento',
+          'timer-avvia': 'avvio', 'timer-ferma': 'ferma', 'drl-rinforzo': 'rinforzo'
+        }[az];
+        var valore = { contingenzaId: cid, procedura: procedura(cid), azione: azione };
         if (az === 'dro-momento') { valore.indice = +b.getAttribute('data-indice'); valore.presente = b.getAttribute('data-presente') === '1'; }
+        if (az === 'drl-rinforzo' && b.hasAttribute('data-indice')) valore.indice = +b.getAttribute('data-indice');
         registra('conseguenza', t, valore);
         if (azione === 'data') U.toast('Conseguenza registrata');
+        if (azione === 'errore') U.toast('Errore registrato: conta nella fedeltà del trattamento');
         break;
       }
+      case 'setting': cambiaSetting(); break;
       case 'occorrenza': registra('occorrenza', t); break;
       case 'inizio': registra('inizio', t); break;
       case 'fine': registra('fine', t); break;

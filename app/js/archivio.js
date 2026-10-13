@@ -229,10 +229,41 @@
     return root.BR.piano.criterioPerFase(target, root.BR.piano.faseInCorso(programma));
   }
 
+  // Giorno di calendario (ora locale) di un istante.
+  function giorno(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  // Per i criteri sulla prima prova del giorno: di ogni giorno resta solo la
+  // prima seduta in cui il target ha almeno una prova.
+  function primaSedutaDelGiorno(punti) {
+    var visti = {};
+    return punti.filter(function (p) {
+      if (!p.dettagli || !p.dettagli.primaProva) return false;
+      var g = giorno(p.sessione.inizio);
+      if (visti[g]) return false;
+      visti[g] = true;
+      return true;
+    });
+  }
+
+  // Valori della fase in corso pronti per il criterio: il valore che il
+  // criterio considera (livello di prompt, prima prova), con operatore e
+  // setting della sessione.
+  function valoriPerCriterio(programma, target, punti, criterio) {
+    var voce = voceCorrente(programma);
+    var nellaFase = punti.filter(function (p) { return voce ? p.faseId === voce.id : true; });
+    if (criterio && criterio.primaProva && target.metodo.tipo === 'dtt') nellaFase = primaSedutaDelGiorno(nellaFase);
+    return nellaFase.map(function (p) {
+      return { valore: M.valoreCriterio(criterio, target.metodo.tipo, p), operatore: p.sessione.operatoreId, setting: p.sessione.setting };
+    });
+  }
+
   function statoCriterio(programma, target, punti) {
     var voce = voceCorrente(programma);
-    var valori = punti.filter(function (p) { return voce ? p.faseId === voce.id : true; }).map(function (p) { return p.valore; });
-    var c = M.verificaCriterio(criterioCorrente(programma, target), valori);
+    var criterio = criterioCorrente(programma, target);
+    var c = M.verificaCriterio(criterio, valoriPerCriterio(programma, target, punti, criterio));
     if (c) c.fase = voce ? voce.tipo : 'baseline';
     return c;
   }
@@ -337,7 +368,8 @@
     soggetto: soggetto, operatore: operatore, targetDi: targetDi, trovaTarget: trovaTarget,
     faseDiSessione: faseDiSessione, faseCorrente: faseCorrente, voceDiSessione: voceDiSessione,
     voceCorrente: voceCorrente, nomeFaseCorrente: nomeFaseCorrente, criterioCorrente: criterioCorrente,
-    sessioniDi: sessioniDi, eventiDi: eventiDi, serie: serie, statoCriterio: statoCriterio, regoleFase: regoleFase,
+    sessioniDi: sessioniDi, eventiDi: eventiDi, serie: serie, statoCriterio: statoCriterio, valoriPerCriterio: valoriPerCriterio,
+    primaSedutaDelGiorno: primaSedutaDelGiorno, regoleFase: regoleFase,
     online: online, inAttesa: inAttesa, sincronizza: sincronizza,
     apriSessione: apriSessione, registra: registra, annullaUltimo: annullaUltimo, chiudiSessione: chiudiSessione
   };
