@@ -328,9 +328,19 @@
       return '<div class="ev' + (annullati[e.id] ? ' annullato' : '') + (e.tipo === 'annulla' ? ' correzione' : '') + '">' +
         '<span class="dato tenue">' + U.mmss(e.t - sess.inizio) + '</span>' +
         '<span>' + esc(x ? x.target.nome : '?') + '</span>' +
-        '<span class="dato">' + esc(descriviEvento(e)) + '</span>' +
+        '<span class="dato">' + esc(e.tipo === 'conseguenza' ? P.descriviEventoConseguenza(e, contingenza(s, e.valore && e.valore.contingenzaId)) : descriviEvento(e)) + '</span>' +
         (e.sincronizzato ? '' : '<span class="pillola attenzione">da inviare</span>') + '</div>';
     }).join('') + '</div>';
+  }
+
+  function contingenza(s, id) {
+    var trovata = null;
+    s.programmi.forEach(function (pr) {
+      ((pr.piano && pr.piano.fasi) || []).forEach(function (f) {
+        (f.contingenze || []).forEach(function (c) { if (c.id === id) trovata = c; });
+      });
+    });
+    return trovata;
   }
 
   function descriviEvento(e) {

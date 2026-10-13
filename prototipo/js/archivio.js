@@ -245,9 +245,10 @@
   }
 
   // Annulla l'ultimo evento valido di un target nella sessione (se c'è).
+  // Senza tipi, le conseguenze del piano restano fuori: si annullano a parte.
   function annullaUltimo(stato, sessione, target, tipi) {
     var validi = M.eventiValidi(eventiDi(stato, sessione.id, target.id))
-      .filter(function (e) { return !tipi || tipi.indexOf(e.tipo) !== -1; });
+      .filter(function (e) { return tipi ? tipi.indexOf(e.tipo) !== -1 : e.tipo !== 'conseguenza'; });
     var ultimo = validi[validi.length - 1];
     if (!ultimo) return null;
     return registra(stato, sessione, target, 'annulla', null, { rif: ultimo.id });
