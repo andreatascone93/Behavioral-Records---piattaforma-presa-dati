@@ -33,8 +33,13 @@
     return d.getDate() + '/' + (d.getMonth() + 1);
   }
 
+  // Una fase è identificata dalla sua voce (faseId) quando c'è: due passi di
+  // assottigliamento dello stesso tipo restano separati sul grafico.
+  function chiaveFase(p) { return p.faseId || p.fase; }
+  function nomeFase(p) { return p.faseNome || M.FASI[p.fase] || p.fase; }
+
   /*
-   * opzioni: { punti: [{ valore, fase, sessione }], tipo, criterio, titolo,
+   * opzioni: { punti: [{ valore, fase, faseId, faseNome, sessione }], tipo, criterio, titolo,
    *            larghezza, altezza }
    */
   function aba(o) {
@@ -80,10 +85,10 @@
     var inizioFase = 0;
     punti.forEach(function (p, i) {
       var ultima = i === n - 1;
-      var cambia = !ultima && punti[i + 1].fase !== p.fase;
+      var cambia = !ultima && chiaveFase(punti[i + 1]) !== chiaveFase(p);
       if (cambia || ultima) {
         var xa = inizioFase === 0 ? sx : (X(inizioFase - 1) + X(inizioFase)) / 2;
-        parti.push('<text class="g-fase" x="' + (xa + 6).toFixed(1) + '" y="' + (su - 8) + '">' + esc(M.FASI[p.fase] || p.fase) + '</text>');
+        parti.push('<text class="g-fase" x="' + (xa + 6).toFixed(1) + '" y="' + (su - 8) + '">' + esc(nomeFase(p)) + '</text>');
         if (cambia) {
           var xl = ((X(i) + X(i + 1)) / 2).toFixed(1);
           parti.push('<line class="g-cambio" x1="' + xl + '" x2="' + xl + '" y1="' + (su - 18) + '" y2="' + (H - giu) + '"/>');
@@ -107,7 +112,7 @@
     }
     punti.forEach(function (p, i) {
       if (p.valore == null) { chiudi(); return; }
-      if (i > 0 && punti[i - 1].fase !== p.fase) chiudi();
+      if (i > 0 && chiaveFase(punti[i - 1]) !== chiaveFase(p)) chiudi();
       tratto.push(X(i).toFixed(1) + ',' + Y(Math.min(p.valore, sc.max)).toFixed(1));
     });
     chiudi();
@@ -117,7 +122,7 @@
       if (p.valore == null) return;
       var cx = X(i).toFixed(1), cy = Y(Math.min(p.valore, sc.max)).toFixed(1);
       var info = 'Sessione ' + (i + 1) + ' · ' + dataBreve(p.sessione.inizio) + ' · ' +
-        (M.FASI[p.fase] || p.fase) + '\n' + M.formatta(p.valore, o.tipo) + ' ' + tipo.unita;
+        nomeFase(p) + '\n' + M.formatta(p.valore, o.tipo) + ' ' + tipo.unita;
       parti.push('<circle class="g-punto' + (i === n - 1 ? ' g-ultimo' : '') + '" cx="' + cx + '" cy="' + cy + '" r="4"/>');
       parti.push('<circle class="g-tocco" cx="' + cx + '" cy="' + cy + '" r="11" data-info="' + esc(info) + '" tabindex="0"><title>' + esc(info) + '</title></circle>');
     });

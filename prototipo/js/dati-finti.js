@@ -9,6 +9,7 @@
   'use strict';
 
   var M = root.BR && root.BR.modello ? root.BR.modello : require('./modello.js');
+  var P = root.BR && root.BR.piano ? root.BR.piano : require('./piano.js');
 
   function mulberry32(seed) {
     return function () {
@@ -63,12 +64,21 @@
       colpire: {
         include: 'Contatto forzato di mano, piede o oggetto lanciato con il corpo di un’altra persona.',
         esclude: 'Contatti accidentali durante il gioco motorio; toccare per chiamare.',
-        esempi: 'Schiaffo, calcio, lancio di una costruzione verso l’operatore.'
+        esempi: 'Schiaffo, calcio, lancio di una costruzione verso l’operatore.',
+        inizio: 'Contatto con il corpo dell’altra persona.',
+        fine: 'Evento istantaneo: due colpi separati da meno di 1 secondo contano come uno.'
       },
       pianto: {
         include: 'Pianto o urla udibili da 3 metri, per almeno 3 secondi. Fine dopo 5 secondi di silenzio.',
         esclude: 'Lamenti brevi sotto i 3 secondi.',
         esempi: 'Pianto dopo la richiesta di riordinare.'
+      },
+      pausa: {
+        include: 'Dice “pausa” o consegna la carta PAUSA durante un compito, senza comportamento problema nei 5 secondi precedenti.',
+        esclude: 'Richiesta fatta mentre colpisce o piange.',
+        esempi: 'Porge la carta dopo tre richieste di riordino.',
+        inizio: 'La carta tocca la mano dell’adulto o la parola è udibile.',
+        fine: 'Evento istantaneo.'
       },
       aiuto: {
         include: 'Il bambino dice “aiuto” o porge l’oggetto all’adulto entro 5 secondi dall’occasione.',
@@ -109,17 +119,39 @@
 
     function crit(soglia, verso) { return { soglia: soglia, verso: verso, sessioni: 3 }; }
 
-    function target(nome, direzione, tipo, parametri, criterio, def, profili) {
+    // extra: ruolo, funzione, sostituisce, obiettivo, insegnamento, generalizzazione.
+    function target(nome, direzione, tipo, parametri, criterio, def, profili, extra) {
       var base = JSON.parse(JSON.stringify(M.TIPI[tipo].parametri));
       Object.keys(parametri || {}).forEach(function (k) { base[k] = parametri[k]; });
-      return {
+      var t = {
         id: id('tg'),
         nome: nome,
         direzione: direzione,
-        definizione: def,
+        ruolo: direzione === 'ridurre' ? 'problema' : 'abilita',
+        definizione: Object.assign({ inizio: '', fine: '' }, def),
         metodo: { id: id('me'), tipo: tipo, versione: 1, parametri: base, criterio: criterio },
         _profili: profili
       };
+      Object.keys(extra || {}).forEach(function (k) { t[k] = extra[k]; });
+      return t;
+    }
+
+    function insegnamento(formato, istruzione, materiali, strategia, ritardoSec, correzione) {
+      return {
+        formato: formato, istruzione: istruzione, materiali: materiali,
+        prompt: { strategia: strategia, ritardoSec: ritardoSec || 0, sfumatura: 'Si passa al livello meno intrusivo dopo 2 sessioni con almeno l’80% di risposte al livello in corso.' },
+        correzione: correzione, rinforzoDifferenziale: true
+      };
+    }
+
+    function generalizzazione(persone, luoghi, materiali) {
+      return { persone: persone, luoghi: luoghi, materiali: materiali };
+    }
+
+    // Collega le fasi svolte (baseline, intervento) alle prime due fasi del piano.
+    function conPiano(pr, modello, problema, alternativo, funzione) {
+      pr.piano = { modello: modello, fasi: P.creaFasi(modello, problema, alternativo, funzione, id) };
+      return pr;
     }
 
     // ---- Pazienti -------------------------------------------------------
@@ -131,21 +163,48 @@
       id: id('pr'), nome: 'Ridurre l’aggressività', area: 'ridurre', stato: 'attivo',
       fasi: [], target: []
     };
-    p1aggr.target.push(target('Colpire gli altri', 'ridurre', 'frequenza', {}, crit(0.1, 'al_massimo'), definizioni.colpire,
-      { baseline: andamento(rnd, 0.6, 0.65, 0.12), intervento: andamento(rnd, 0.45, 0.14, 0.06) }));
+    var funzioneFuga = {
+      ipotesi: 'fuga', altre: ['tangibile'], sintetizzata: true, fonti: ['indiretta', 'descrittiva', 'iisca'], certezza: 'confermata',
+      note: 'Nelle schede ABC il 70% degli episodi segue una richiesta di compito e termina con il compito rimosso, spesso con accesso al tablet. IISCA del 15/09: tassi alti solo nella condizione di test (richieste e tablet tolto), zero nel controllo.'
+    };
+    var colpire = target('Colpire gli altri', 'ridurre', 'frequenza', {}, crit(0.1, 'al_massimo'), definizioni.colpire,
+      { baseline: andamento(rnd, 0.6, 0.65, 0.12), intervento: andamento(rnd, 0.45, 0.14, 0.06) },
+      { funzione: funzioneFuga, obiettivo: { condizione: 'durante il lavoro al tavolo con richieste di compito' } });
+    p1aggr.target.push(colpire);
+    var pausa = target('Chiede una pausa', 'aumentare', 'frequenza', {}, crit(0.3, 'almeno'), definizioni.pausa,
+      { baseline: andamento(rnd, 0.02, 0.03, 0.02), intervento: andamento(rnd, 0.15, 0.45, 0.05) },
+      {
+        ruolo: 'sostitutivo', sostituisce: colpire.id,
+        obiettivo: { condizione: 'durante il lavoro al tavolo, quando riceve una richiesta' },
+        insegnamento: insegnamento('net', 'Nessuna istruzione: l’occasione è la richiesta di compito.', 'Carta PAUSA sul tavolo', 'ritardo_progressivo', 2, 'ripresenta_prompt'),
+        generalizzazione: generalizzazione(['Giulia R.', 'Andrea', 'Genitori'], ['Studio', 'Casa'], ['Carta PAUSA', 'Parola “pausa”'])
+      });
+    p1aggr.target.push(pausa);
     p1aggr.target.push(target('Crisi di pianto', 'ridurre', 'durata', {}, crit(1, 'al_massimo'), definizioni.pianto,
-      { baseline: andamento(rnd, 6, 6.5, 1.2), intervento: andamento(rnd, 5, 1.4, 0.6) }));
+      { baseline: andamento(rnd, 6, 6.5, 1.2), intervento: andamento(rnd, 5, 1.4, 0.6) },
+      { funzione: funzioneFuga }));
     p1aggr.target.push(target('Episodi aggressivi (ABC)', 'ridurre', 'abc',
       { comportamenti: ['Colpire', 'Lanciare oggetti', 'Spingere'] }, null,
       { include: 'Ogni episodio di aggressività, registrato con antecedente e conseguenza.', esclude: '', esempi: '' },
-      { baseline: andamento(rnd, 3, 3, 1), intervento: andamento(rnd, 2.5, 0.8, 0.6) }));
+      { baseline: andamento(rnd, 3, 3, 1), intervento: andamento(rnd, 2.5, 0.8, 0.6) },
+      { ruolo: 'valutazione' }));
+    conPiano(p1aggr, 'fct', colpire, pausa, ['fuga', 'tangibile']);
+    // Nella fase FCT la conseguenza vale per entrambi i comportamenti problema.
+    p1aggr.piano.fasi[1].antecedenti = [{ id: id('an'), tipo: 'alta_probabilita', richieste: 3, dettaglio: 'Tre richieste motorie facili prima di ogni compito al tavolo.' }];
     p1aggr._cambio = 6;
 
     var p1aiuto = {
       id: id('pr'), nome: 'Chiedere aiuto', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    p1aiuto.target.push(target('Chiede aiuto', 'aumentare', 'dtt', { prove: 10 }, crit(80, 'almeno'), definizioni.aiuto,
-      { baseline: andamento(rnd, 10, 15, 6), intervento: andamento(rnd, 30, 92, 5) }));
+    var aiuto = target('Chiede aiuto', 'aumentare', 'dtt', { prove: 10 }, crit(80, 'almeno'), definizioni.aiuto,
+      { baseline: andamento(rnd, 10, 15, 6), intervento: andamento(rnd, 30, 92, 5) },
+      {
+        obiettivo: { condizione: 'davanti a un barattolo chiuso o a un gioco bloccato, senza istruzione' },
+        insegnamento: insegnamento('dtt', 'Occasione organizzata: oggetto preferito in un barattolo che non sa aprire.', 'Barattoli, scatole con chiusura, puzzle', 'ritardo_costante', 3, 'ripresenta_prompt'),
+        generalizzazione: generalizzazione(['Giulia R.', 'Andrea'], ['Studio', 'Sala d’attesa'], ['Barattoli', 'Zaino', 'Scarpe'])
+      });
+    p1aiuto.target.push(aiuto);
+    conPiano(p1aiuto, 'acquisizione', null, aiuto);
     p1aiuto._cambio = 5;
 
     soggetti.push({
@@ -160,21 +219,68 @@
     var p2classe = {
       id: id('pr'), nome: 'Autonomia al banco', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    p2classe.target.push(target('Attenzione al compito', 'aumentare', 'intervallo_totale',
-      { intervalloSec: 10, osservazioneMin: 5 }, crit(80, 'almeno'), definizioni.attenzione,
-      { baseline: andamento(rnd, 28, 32, 6), intervento: andamento(rnd, 40, 68, 6) }));
-    p2classe.target.push(target('Alzarsi dal banco', 'ridurre', 'intervallo_parziale',
+    var alzarsi = target('Alzarsi dal banco', 'ridurre', 'intervallo_parziale',
       { intervalloSec: 10, osservazioneMin: 5 }, crit(10, 'al_massimo'), definizioni.alzarsi,
-      { baseline: andamento(rnd, 48, 52, 7), intervento: andamento(rnd, 40, 18, 5) }));
+      { baseline: andamento(rnd, 48, 52, 7), intervento: andamento(rnd, 40, 18, 5) },
+      {
+        funzione: { ipotesi: 'attenzione', fonti: ['indiretta', 'descrittiva'], certezza: 'probabile', note: 'L’insegnante richiama ogni volta; quando l’adulto è vicino il comportamento cala.' },
+        obiettivo: { condizione: 'durante le schede individuali in classe' }
+      });
+    var attenzione = target('Attenzione al compito', 'aumentare', 'intervallo_totale',
+      { intervalloSec: 10, osservazioneMin: 5 }, crit(80, 'almeno'), definizioni.attenzione,
+      { baseline: andamento(rnd, 28, 32, 6), intervento: andamento(rnd, 40, 68, 6) },
+      {
+        ruolo: 'sostitutivo', sostituisce: alzarsi.id,
+        obiettivo: { condizione: 'durante le schede individuali in classe' },
+        generalizzazione: generalizzazione(['Insegnante di sostegno', 'Insegnante di classe'], ['Aula', 'Laboratorio'], ['Schede', 'Quaderno'])
+      });
+    p2classe.target.push(attenzione, alzarsi);
+    var menuToken = [
+      { descrizione: 'Due minuti di gioco con l’insegnante', costo: 5 },
+      { descrizione: 'Adesivo', costo: 3 },
+      { descrizione: 'Scegliere il gioco dell’intervallo', costo: 8 }
+    ];
+    var lode = { descrizione: 'Lode descrittiva e vicinanza dell’adulto', categoria: 'sociale', qualita: 'alta', ritardoSec: 0 };
+    p2classe.piano = {
+      modello: null,
+      fasi: [
+        { id: id('pf'), tipo: 'baseline', nome: 'Baseline', descrizione: 'Richiami abituali dell’insegnante.', antecedenti: [], contingenze: [], criteri: {} },
+        {
+          id: id('pf'), tipo: 'intervento', nome: 'DRI con token', descrizione: 'Attenzione al compito rinforzata con token; alzarsi non riceve più richiami.',
+          antecedenti: [{ id: id('an'), tipo: 'agenda_visiva', dettaglio: 'Agenda della mattina sul banco, con la pausa indicata.' }],
+          contingenze: [
+            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'FI', valore: 60 }, parametri: { tokenPerScambio: 5, prezzi: menuToken } },
+            { id: id('ct'), targetId: alzarsi.id, procedura: 'dri', schema: { tipo: 'FI', valore: 60 }, rinforzatore: lode, parametri: { alternativoId: attenzione.id, problema: 'estinzione' } },
+            { id: id('ct'), targetId: alzarsi.id, procedura: 'estinzione', parametri: { variante: 'attenzione' } }
+          ],
+          criteri: {}, uscita: 'Alzarsi al massimo nel 10% degli intervalli per 3 sessioni.'
+        },
+        {
+          id: id('pf'), tipo: 'assottigliamento', nome: 'Token ogni 3 minuti', descrizione: '', antecedenti: [],
+          contingenze: [
+            { id: id('ct'), targetId: attenzione.id, procedura: 'token', schema: { tipo: 'VI', valore: 180 }, parametri: { tokenPerScambio: 5, prezzi: menuToken } },
+            { id: id('ct'), targetId: alzarsi.id, procedura: 'estinzione', parametri: { variante: 'attenzione' } }
+          ],
+          criteri: {}
+        }
+      ]
+    };
     p2classe._cambio = 6;
 
     var p2mani = {
       id: id('pr'), nome: 'Lavarsi le mani', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    p2mani.target.push(target('Routine lavaggio mani', 'aumentare', 'task_analysis',
+    var mani = target('Routine lavaggio mani', 'aumentare', 'task_analysis',
       { passi: ['Aprire l’acqua', 'Bagnare le mani', 'Prendere il sapone', 'Strofinare 10 secondi', 'Sciacquare', 'Asciugare'] },
       crit(80, 'almeno'), definizioni.mani,
-      { baseline: andamento(rnd, 17, 17, 4), intervento: andamento(rnd, 33, 67, 6) }));
+      { baseline: andamento(rnd, 17, 17, 4), intervento: andamento(rnd, 33, 67, 6) },
+      {
+        obiettivo: { condizione: 'prima della merenda, al lavandino della scuola, con l’istruzione “lava le mani”' },
+        insegnamento: insegnamento('catena_indietro', '“Lava le mani”', 'Sapone a pompa, asciugamano di carta', 'meno_intrusivo', 0, 'ripresenta_prompt'),
+        generalizzazione: generalizzazione(['Insegnante di sostegno', 'Genitori'], ['Bagno della scuola', 'Casa'], ['Sapone a pompa', 'Saponetta'])
+      });
+    p2mani.target.push(mani);
+    conPiano(p2mani, 'acquisizione', null, mani);
     p2mani._cambio = 4;
 
     soggetti.push({
@@ -189,23 +295,55 @@
     var p3imit = {
       id: id('pr'), nome: 'Imitazione motoria', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    p3imit.target.push(target('Imita azioni con il corpo', 'aumentare', 'dtt', { prove: 10 }, crit(80, 'almeno'), definizioni.imitazione,
-      { baseline: andamento(rnd, 20, 20, 8), intervento: andamento(rnd, 30, 62, 7) }));
+    var imita = target('Imita azioni con il corpo', 'aumentare', 'dtt', { prove: 10 }, crit(80, 'almeno'), definizioni.imitazione,
+      { baseline: andamento(rnd, 20, 20, 8), intervento: andamento(rnd, 30, 62, 7) },
+      {
+        obiettivo: { condizione: 'al tavolo, con l’istruzione “fai così” e il modello dell’adulto' },
+        insegnamento: insegnamento('dtt', '“Fai così” più il modello', 'Nessuno', 'meno_intrusivo', 0, 'errorless'),
+        generalizzazione: generalizzazione(['Giulia R.', 'Andrea'], ['Studio', 'Palestra'], ['Azioni nuove non insegnate'])
+      });
+    p3imit.target.push(imita);
+    conPiano(p3imit, 'acquisizione', null, imita);
     p3imit._cambio = 4;
 
     var p3stereo = {
       id: id('pr'), nome: 'Ridurre le stereotipie vocali', area: 'ridurre', stato: 'attivo', fasi: [], target: []
     };
-    p3stereo.target.push(target('Vocalizzazioni ripetitive', 'ridurre', 'momentaneo',
+    var stereo = target('Vocalizzazioni ripetitive', 'ridurre', 'momentaneo',
       { intervalloSec: 30, osservazioneMin: 10 }, crit(15, 'al_massimo'), definizioni.stereotipie,
-      { baseline: andamento(rnd, 60, 62, 7), intervento: andamento(rnd, 50, 32, 7) }));
+      { baseline: andamento(rnd, 60, 62, 7), intervento: andamento(rnd, 50, 32, 7) },
+      {
+        funzione: { ipotesi: 'automatica', fonti: ['analisi_funzionale'], certezza: 'confermata', note: 'Livelli alti e stabili anche nella condizione da solo.' },
+        obiettivo: { condizione: 'durante il gioco libero in studio' }
+      });
+    p3stereo.target.push(stereo);
+    p3stereo.piano = {
+      modello: null,
+      fasi: [
+        { id: id('pf'), tipo: 'baseline', nome: 'Baseline', descrizione: '', antecedenti: [], contingenze: [], criteri: {} },
+        {
+          id: id('pf'), tipo: 'intervento', nome: 'NCR musicale e DRO momentaneo', descrizione: 'Accesso libero a stimolazione uditiva in competizione, più rinforzo dell’assenza di vocalizzazioni.',
+          antecedenti: [{ id: id('an'), tipo: 'ncr', schema: { tipo: 'FT', valore: 60 }, rinforzatore: { descrizione: 'Canzoncina preferita in cuffia', categoria: 'sensoriale', magnitudo: '20 s', qualita: 'alta', ritardoSec: 0 }, dettaglio: '' }],
+          contingenze: [{ id: id('ct'), targetId: stereo.id, procedura: 'dro', rinforzatore: { descrizione: 'Bolle di sapone', categoria: 'sensoriale', magnitudo: '10 s', qualita: 'alta', ritardoSec: 0 }, parametri: { variante: 'momentaneo_fisso', intervalloSec: 30, azzera: false } }],
+          criteri: {}
+        }
+      ]
+    };
     p3stereo._cambio = 4;
 
     var p3nome = {
       id: id('pr'), nome: 'Risposta al nome', area: 'insegnare', stato: 'attivo', fasi: [], target: []
     };
-    p3nome.target.push(target('Si gira quando chiamato', 'ridurre', 'latenza', {}, crit(3, 'al_massimo'), definizioni.nome,
-      { baseline: andamento(rnd, 6.5, 6, 1), intervento: andamento(rnd, 5, 2.6, 0.5) }));
+    var nome = target('Si gira quando chiamato', 'ridurre', 'latenza', {}, crit(3, 'al_massimo'), definizioni.nome,
+      { baseline: andamento(rnd, 6.5, 6, 1), intervento: andamento(rnd, 5, 2.6, 0.5) },
+      {
+        ruolo: 'abilita',
+        obiettivo: { condizione: 'quando viene chiamato una volta a 2 metri durante un gioco' },
+        insegnamento: insegnamento('net', 'Nome detto una volta, voce normale', 'Giochi preferiti', 'piu_intrusivo', 0, 'modello_ripeti'),
+        generalizzazione: generalizzazione(['Genitori', 'Giulia R.'], ['Studio', 'Casa'], [])
+      });
+    p3nome.target.push(nome);
+    conPiano(p3nome, 'acquisizione', null, nome);
     p3nome._cambio = 5;
 
     soggetti.push({
@@ -226,9 +364,10 @@
 
       // Fasi: baseline dalla prima seduta, intervento dalla seduta del cambio.
       s.programmi.forEach(function (pr) {
+        var pf = pr.piano.fasi;
         pr.fasi = [
-          { id: id('fa'), tipo: 'baseline', inizio: dataISO(giorni[0]), nota: 'Osservazione iniziale' },
-          { id: id('fa'), tipo: 'intervento', inizio: dataISO(giorni[pr._cambio]), nota: 'Avvio del trattamento' }
+          { id: id('fa'), tipo: 'baseline', inizio: dataISO(giorni[0]), nota: 'Osservazione iniziale', pianoId: pf[0].id },
+          { id: id('fa'), tipo: pf[1].tipo, inizio: dataISO(giorni[pr._cambio]), nota: 'Avvio del trattamento', pianoId: pf[1].id }
         ];
       });
 
@@ -250,13 +389,15 @@
           id: id('se'), soggettoId: s.id, scheduleId: s.schedule.id,
           operatoreId: piano.operatori[k % piano.operatori.length],
           inizio: S, fine: F, stato: 'chiusa', sincronizzata: true,
-          setting: s.schedule.setting, fasi: {}, versioniMetodi: {}, nota: ''
+          setting: s.schedule.setting, fasi: {}, fasiId: {}, versioniMetodi: {}, nota: ''
         };
         sessioni.push(sess);
 
         s.programmi.forEach(function (pr) {
           var inIntervento = k >= pr._cambio;
-          sess.fasi[pr.id] = inIntervento ? 'intervento' : 'baseline';
+          var voce = pr.fasi[inIntervento ? 1 : 0];
+          sess.fasi[pr.id] = voce.tipo;
+          sess.fasiId[pr.id] = voce.id;
           var kFase = inIntervento ? k - pr._cambio : k;
           var nFase = inIntervento ? piano.sessioni - pr._cambio : pr._cambio;
           pr.target.forEach(function (t) {
@@ -394,7 +535,7 @@
     eventi.sort(function (a, b) { return a.t - b.t; });
 
     return {
-      versione: 1,
+      versione: 2,
       generato: oggi.getTime(),
       contesto: 'clinica',
       operatoreCorrente: 'op_andrea',
