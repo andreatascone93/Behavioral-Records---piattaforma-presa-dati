@@ -24,7 +24,7 @@ Nota di metodo: PubMed Central chiedeva un controllo reCAPTCHA, quindi per gli a
 | 1 | **In seduta, i comportamenti da ridurre sempre a portata di pollice**, in una barra fissa in basso, senza dover scorrere | Il comportamento problema va registrato per tutta la seduta e compare quando vuole lui. Oggi la seduta di PZ-014 (6 target) è lunga circa 3,8 schermate [Misurato]: per contare un colpo bisogna prima trovare la carta giusta | Telefono, schermo della seduta |
 | 2 | **Separare "leggere il piano" da "registrare"**: in seduta il piano della fase in una riga espandibile, non un riquadro sempre aperto | Divulgazione progressiva: in primo piano solo ciò che serve spesso (Nielsen, 2006 [V]). Oggi ogni carta mostra 3-4 righe di piano prima del tasto +1 [Misurato] | Telefono, carte dei target |
 | 3 | **Conferma di ogni tocco che non dipenda dalla vibrazione** | Safari su iPhone non supporta la vibrazione dal web (MDN [V parziale]); su iPhone oggi il tocco ha solo il numero che cambia | Telefono, tutti i tasti di registrazione |
-| 4 | **"Annulla" più grande e vicino al tasto, "Termina" meno in evidenza** | Annullare è meglio che chiedere conferma (Nielsen, 2018 [V]); le azioni irreversibili vanno tenute lontane dai tasti frequenti (Hoober, 2017 [V]). Oggi "Annulla ultimo" è alto 32 px e sta in cima alla carta, lontano dal +1; "Termina" è il pulsante blu pieno in alto [Misurato] | Telefono, testata e carte |
+| 4 | **"Annulla" più grande, "Termina" meno in evidenza** | Annullare è meglio che chiedere conferma (Nielsen, 2018 [V]); le azioni irreversibili vanno tenute lontane dai tasti frequenti (Hoober, 2017 [V]). Oggi "Annulla ultimo" è alto 32 px e sta in cima alla carta, lontano dal +1; "Termina" è il pulsante blu pieno in alto [Misurato] | Telefono, testata e carte |
 | 5 | **Bordi di campi e pulsanti secondari a contrasto 3:1** | WCAG 2.2, criterio 1.4.11 [V]. Oggi il bordo `--linea` ha contrasto 1,38:1 sul bianco [Misurato] | Tema condiviso (`tema.css`) |
 | 6 | **Grafici più alti, stessa scala per misure uguali, ausili facoltativi per l'analisi visiva** | Proporzione standard 5:8 - 3:4 (Kubina et al., 2017 [V]); oggi 230:600, cioè circa 3:8 [Misurato]. L'accordo tra analisti visivi è in media .76 (Ninci et al., 2015 [V parziale]); le linee del dual-criterion portano l'accuratezza dal 55-71% al 94-95% dopo un breve addestramento (Fisher et al., 2003 [V parziale]) | Desktop, scheda Grafici |
 | 7 | **Raggruppare le 8 schede del paziente** e far vedere quando la barra delle schede scorre | Ogni scelta in più rallenta la decisione (legge di Hick, raccolta in lawsofux.com [V]). A 768 px "Schedule di seduta" e "Sessioni" sono fuori schermo senza nessun indizio [Misurato] | Desktop, testata del paziente |
@@ -137,7 +137,7 @@ Rilievo sull'app [Misurato], schermo della seduta:
 | Chip ABC, "Conseguenza data", "Rinforzato per errore", elementi del target | 40 px | Passa le WCAG, sotto Apple e Google. Sono tocchi frequenti in seduta: portarli a 48 px |
 | "Termina" | 42 px | Va bene come grandezza; è lo stile il problema (3.5) |
 | "Online/Offline" | 36 px | Azione rara, va bene; meglio 44 |
-| "Annulla ultimo" | 32 px, in cima alla carta | Troppo piccolo per un'azione che serve proprio quando si è sbagliato di fretta, e lontano dal +1 che corregge: 48 px, accanto al tasto |
+| "Annulla ultimo" | 32 px, in cima alla carta | Troppo piccolo per un'azione che serve proprio quando si è sbagliato di fretta: almeno 44 px. Meglio non attaccarlo al +1, per non annullare un dato toccando di fretta (Hoober, 2017: azioni distruttive lontane da quelle frequenti) |
 
 ### 3.4 Conferma del tocco
 
@@ -365,6 +365,8 @@ Ordinata per rapporto tra beneficio e sforzo. S = piccolo, M = medio, L = grande
 | 18 | Caratteri ospitati nell'app | `app/`, `sw.js` | S | GDPR (passo dedicato) |
 | 19 | Scala tipografica e spaziature come variabili | CSS | M | sistema di design |
 | 20 | Prova con operatori in seduta simulata, SUS e NASA-TLX | fuori dal codice | L | sezione 10 |
+
+**Stato al 14/10/2026.** Fatti nell'app: 1 (nuova variabile `--bordo-controllo`, 3,19:1 o più su tutti i fondi in entrambi i temi), 2 e 3 (tutti i pulsanti del telefono almeno 44 px, chip, scelte e conseguenze 48 px; "Termina" con stile secondario), 4 (le schede vanno a capo invece di scorrere: a 1024 px ne restavano nascoste tre), 5 (proporzione 5:8, al massimo 360 px di altezza su una colonna), 6, 7 (il pulsante è in fondo all'elenco dei pazienti), 8, 9 (anche sul desktop), 11 in parte (lampo sulla carta registrata; il numero di dati da inviare è anche nell'avviso offline e nell'etichetta per i lettori di schermo; il messaggio di annullamento nomina il target). "Annulla ultimo" resta in cima alla carta per il motivo scritto in 3.3. Non fatti: 10 (serve scegliere la parola), il suono facoltativo e l'avviso sullo schermo di iPhone, 12-20.
 
 ---
 

@@ -2,6 +2,8 @@
 
 body { font-size: 16px; }
 .piccolo { font-size: 0.82rem; }
+/* Sul telefono nessun pulsante sotto i 44 px (Apple HIG; WCAG 2.5.8 chiede almeno 24). */
+.btn { min-height: 44px; }
 .telefono {
   max-width: 520px;
   margin: 0 auto;
@@ -32,7 +34,7 @@ body { font-size: 16px; }
 .seduta-titolo { display: flex; flex-direction: column; line-height: 1.15; }
 .codice { font-weight: 500; font-size: 1.05rem; }
 .orologio { font-size: 0.9rem; color: var(--testo-2); }
-.indietro { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.5rem; min-width: 40px; }
+.indietro { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.5rem; min-width: 44px; min-height: 44px; justify-content: center; }
 
 .rete {
   font: inherit;
@@ -43,8 +45,8 @@ body { font-size: 16px; }
   gap: 6px;
   border-radius: 999px;
   padding: 0.35rem 0.7rem;
-  min-height: 36px;
-  border: 1px solid var(--linea);
+  min-height: 44px;
+  border: 1px solid var(--bordo-controllo);
   background: var(--superficie);
   color: var(--inchiostro);
   cursor: pointer;
@@ -80,7 +82,7 @@ body { font-size: 16px; }
 .btn.grande { min-height: 52px; justify-content: center; font-size: 1rem; }
 
 .piede { display: grid; gap: 8px; justify-items: start; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--linea); }
-.piede .btn-piatto { padding-inline: 0; min-height: 32px; color: var(--testo-2); }
+.piede .btn-piatto { padding-inline: 0; min-height: 44px; color: var(--testo-2); }
 
 /* Strumenti in seduta */
 .strumenti { display: grid; gap: 12px; }
@@ -94,7 +96,7 @@ body { font-size: 16px; }
 }
 .strumento-testa { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
 .strumento-testa h3 { font-size: 1.05rem; }
-.annulla { color: var(--critico); padding: 0.2rem 0.4rem; min-height: 32px; white-space: nowrap; }
+.annulla { color: var(--critico); padding: 0.4rem 0.6rem; min-height: 44px; white-space: nowrap; }
 .conteggio { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .numero { font-size: 2.4rem; font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
 .numero-medio { font-size: 1.6rem; font-weight: 500; line-height: 1.1; }
@@ -112,6 +114,14 @@ body { font-size: 16px; }
   user-select: none;
 }
 .tasto-grande:active { transform: scale(0.985); }
+
+/* Lampo sulla carta appena registrata: conferma visibile con la coda dell'occhio,
+   anche dove il telefono non vibra (Safari su iPhone). */
+.strumento.appena { animation: appena 0.6s ease-out; }
+@keyframes appena {
+  from { box-shadow: 0 0 0 3px var(--penna); background: var(--penna-tenue); }
+  to { box-shadow: 0 0 0 0 transparent; background: var(--superficie); }
+}
 .tasto-grande.in-corso { background: var(--critico); border-color: var(--critico); color: var(--superficie); }
 .tasto-grande:disabled { background: var(--superficie-2); border-color: var(--linea); color: var(--testo-2); opacity: 1; }
 .tasto-medio { min-height: 56px; justify-content: center; font-size: 1.05rem; flex: 1; touch-action: manipulation; }
@@ -161,9 +171,9 @@ body { font-size: 16px; }
 .scelta-elementi { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font: inherit; font-size: 0.85rem;
-  min-height: 36px; padding: 0.3rem 0.75rem;
-  border-radius: 99px; border: 1px solid var(--linea);
-  background: var(--superficie); color: var(--testo);
+  min-height: 48px; padding: 0.3rem 0.85rem;
+  border-radius: 99px; border: 1px solid var(--bordo-controllo);
+  background: var(--superficie); color: var(--inchiostro);
   touch-action: manipulation; cursor: pointer;
 }
 .chip.sel { border-color: var(--penna); background: var(--penna); color: var(--su-penna); }
@@ -193,8 +203,8 @@ body { font-size: 16px; }
   font: inherit;
   font-family: var(--f-dati);
   font-size: 0.85rem;
-  min-height: 42px;
-  border: 1px solid var(--linea);
+  min-height: 48px;
+  border: 1px solid var(--bordo-controllo);
   background: var(--superficie);
   color: var(--inchiostro);
   border-radius: 8px;
@@ -211,10 +221,10 @@ body { font-size: 16px; }
 .chip {
   font: inherit;
   font-size: 0.88rem;
-  min-height: 40px;
-  padding: 0.3rem 0.75rem;
+  min-height: 48px;
+  padding: 0.3rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid var(--linea);
+  border: 1px solid var(--bordo-controllo);
   background: var(--superficie);
   color: var(--inchiostro);
   cursor: pointer;
@@ -281,7 +291,7 @@ body { font-size: 16px; }
 .promemoria strong { color: var(--penna); }
 .promemoria li { display: grid; gap: 0.35rem; }
 .promemoria li + li { padding-top: 0.35rem; border-top: 1px solid color-mix(in srgb, var(--penna) 18%, transparent); }
-.promemoria .btn.piccolo { min-height: 40px; }
+.promemoria .btn.piccolo { min-height: 48px; }
 .consegna, .dro-piede { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .dro { display: grid; gap: 0.4rem; }
 .dro.chiede { background: var(--superficie); border-radius: var(--r-piccolo); padding: 0.5rem; box-shadow: 0 0 0 2px var(--penna); }

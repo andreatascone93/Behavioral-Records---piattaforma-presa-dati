@@ -40,7 +40,9 @@
 
   /*
    * opzioni: { punti: [{ valore, fase, faseId, faseNome, sessione }], tipo, criterio, titolo,
-   *            larghezza, altezza }
+   *            massimo (valore più alto da far stare nella scala, per allineare
+   *            più grafici con la stessa unità), larghezza, altezza }
+   * Proporzione consigliata tra altezza e larghezza: da 5:8 a 3:4 (Kubina et al., 2017).
    */
   function aba(o) {
     var W = o.larghezza || 640, H = o.altezza || 240;
@@ -53,6 +55,7 @@
     var massimo = 0;
     punti.forEach(function (p) { if (p.valore != null && p.valore > massimo) massimo = p.valore; });
     if (o.criterio) massimo = Math.max(massimo, o.criterio.soglia);
+    if (o.massimo > massimo) massimo = o.massimo;
     var sc = percentuale ? { max: 100, passo: 25 } : scala(massimo * 1.1);
 
     var X = function (i) { return sx + 12 + (n === 1 ? 0 : (i * (W - sx - dx - 24)) / (n - 1)); };
@@ -150,7 +153,6 @@
       var ys = Y(o.soglia).toFixed(1);
       out += '<line class="g-criterio" x1="0" x2="' + W + '" y1="' + ys + '" y2="' + ys + '"/>';
     }
-    out += '<polygon class="mini-area" points="' + X(0).toFixed(1) + ',' + (H - m) + ' ' + pts.join(' ') + ' ' + X(vs.length - 1).toFixed(1) + ',' + (H - m) + '"/>';
     out += '<polyline class="g-linea" points="' + pts.join(' ') + '"/>';
     var last = vs.length - 1;
     out += '<circle class="g-punto g-ultimo" cx="' + X(last).toFixed(1) + '" cy="' + Y(vs[last]).toFixed(1) + '" r="3.5"/>';

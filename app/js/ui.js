@@ -98,8 +98,29 @@
     } catch (e) { return null; }
   }
 
+  // Le interfacce si ridisegnano con innerHTML: prima si annota quale controllo
+  // ha il fuoco (dai suoi attributi data-*), dopo lo si ritrova e lo si rimette.
+  var ATTRIBUTI_FUOCO = ['id', 'data-azione', 'data-id', 'data-prompt', 'data-indice', 'data-valore', 'data-presente',
+    'data-n', 'data-verso', 'data-fase', 'data-programma'];
+  function chiaveFuoco(contenitore) {
+    var el = document.activeElement;
+    if (!el || el === document.body || !contenitore.contains(el)) return null;
+    var parti = ATTRIBUTI_FUOCO.filter(function (a) { return el.hasAttribute(a); }).map(function (a) {
+      return '[' + a + '="' + el.getAttribute(a).replace(/["\\]/g, '\\$&') + '"]';
+    });
+    return parti.length ? el.tagName.toLowerCase() + parti.join('') : null;
+  }
+  function rimettiFuoco(contenitore, chiave) {
+    if (!chiave) return;
+    var el = contenitore.querySelector(chiave);
+    if (el && el !== document.activeElement) {
+      try { el.focus({ preventScroll: true }); } catch (e) { /* non focalizzabile */ }
+    }
+  }
+
   root.BR.ui = {
     esc: esc, toast: toast, finestra: finestra, conferma: conferma,
-    ora: ora, data: data, mmss: mmss, eta: eta, giorniFa: giorniFa, preferenza: preferenza
+    ora: ora, data: data, mmss: mmss, eta: eta, giorniFa: giorniFa, preferenza: preferenza,
+    chiaveFuoco: chiaveFuoco, rimettiFuoco: rimettiFuoco
   };
 })(window);

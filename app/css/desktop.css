@@ -95,7 +95,9 @@
 .paziente-codice { font-weight: 500; font-size: 1rem; }
 .paziente-nome { font-weight: 700; }
 .paziente-info { font-size: 0.8rem; }
-.nota-prototipo { margin-top: auto; font-size: 0.78rem; color: var(--testo-2); padding: 0 8px; }
+.elenco-piede { margin-top: auto; display: grid; gap: 0.25rem; justify-items: start; }
+.nota-prototipo { font-size: 0.78rem; color: var(--testo-2); padding: 0 8px; }
+.elenco-piede .btn-piatto { color: var(--testo-2); padding-inline: 8px; }
 
 .principale {
   padding-block: 1.5rem 4rem;
@@ -113,9 +115,9 @@
 
 .schede {
   display: flex;
-  gap: 0.25rem;
+  flex-wrap: wrap; /* a capo invece di scorrere: nessuna scheda resta nascosta */
+  gap: 0 0.25rem;
   border-bottom: 1px solid var(--linea);
-  overflow-x: auto;
 }
 .scheda {
   font: inherit;
@@ -152,6 +154,8 @@
 .carta-valore { display: grid; justify-items: end; gap: 0.2rem; text-align: right; flex-shrink: 0; }
 .carta-stato { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .grafico-box { margin-inline: -4px; }
+/* Proporzione 5:8 (Kubina et al., 2017); su una colonna larga non oltre 360 px di altezza. */
+.grafico-box .grafico { max-height: 360px; }
 .carta-grafico > .btn-piatto { justify-self: start; padding-inline: 0; min-height: 32px; color: var(--penna); }
 .proposta {
   display: flex;
