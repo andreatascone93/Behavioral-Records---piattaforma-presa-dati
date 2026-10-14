@@ -99,12 +99,15 @@
   }
 
   // Le interfacce si ridisegnano con innerHTML: prima si annota quale controllo
-  // ha il fuoco (dai suoi attributi data-*), dopo lo si ritrova e lo si rimette.
-  var ATTRIBUTI_FUOCO = ['id', 'data-azione', 'data-id', 'data-prompt', 'data-indice', 'data-valore', 'data-presente',
+  // ha il fuoco (dal suo id o dai suoi attributi data-*), dopo lo si ritrova e
+  // lo si rimette. Con l'id basta quello: resta lo stesso anche quando il
+  // controllo cambia azione (Inizio/Fine di un episodio).
+  var ATTRIBUTI_FUOCO = ['data-azione', 'data-id', 'data-prompt', 'data-indice', 'data-valore', 'data-presente',
     'data-n', 'data-verso', 'data-fase', 'data-programma'];
   function chiaveFuoco(contenitore) {
     var el = document.activeElement;
     if (!el || el === document.body || !contenitore.contains(el)) return null;
+    if (el.id) return '[id="' + el.id.replace(/["\\]/g, '\\$&') + '"]';
     var parti = ATTRIBUTI_FUOCO.filter(function (a) { return el.hasAttribute(a); }).map(function (a) {
       return '[' + a + '="' + el.getAttribute(a).replace(/["\\]/g, '\\$&') + '"]';
     });

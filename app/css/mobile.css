@@ -254,7 +254,7 @@ body { font-size: 16px; }
   color: var(--testo-2);
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  min-height: 36px;
+  min-height: 44px;
   cursor: pointer;
 }
 .segmento.sel { background: var(--superficie); color: var(--inchiostro); box-shadow: var(--ombra); }
@@ -337,3 +337,97 @@ body { font-size: 16px; }
 .probe-avviso { border-left: 4px solid var(--penna); }
 .probe-tasti { display: grid; gap: 8px; }
 .tasto-grande.tasto-errore { background: var(--superficie); border-color: var(--critico); color: var(--critico); }
+
+/* Vista "un target alla volta" (docs/design-esperienza-utente.md, 3.5): indice
+   dei target in alto, una carta al centro, comportamenti da ridurre in basso. */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.seduta-opzioni { display: grid; gap: 2px; margin-bottom: 0.4rem; }
+.seduta-opzioni .seduta-setting { margin: 0; }
+.seduta-vista { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+/* minmax(0, 1fr): i testi su una riga (nome del blocco, "Passa a") si accorciano
+   con i puntini invece di allargare la pagina. */
+.uno-alla-volta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+.uno-alla-volta .blocco-corrente, .uno-alla-volta .scaletta-elenco, .uno-alla-volta .blocco-descr { margin-bottom: 0; }
+.blocco-corrente.compatto { padding: 10px 12px; gap: 6px; grid-template-columns: minmax(0, 1fr); }
+.blocco-corrente.compatto .blocco-nome { font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blocco-corrente.compatto .btn-piatto { padding-inline: 0.4rem; white-space: nowrap; }
+.passa-a {
+  flex: 1; min-width: 0; display: block; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--penna); border-color: var(--penna); color: var(--su-penna);
+}
+.indice { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 4px; scroll-margin-top: 84px; }
+.indice-freccia { font-size: 1.5rem; line-height: 1; justify-content: center; padding: 0; min-width: 44px; }
+.indice-strip {
+  display: flex; gap: 6px; overflow-x: auto; scroll-behavior: auto;
+  scrollbar-width: none; padding-block: 2px;
+  /* Bordi sfumati: si capisce che l'indice continua oltre lo schermo. */
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.indice-strip::-webkit-scrollbar { display: none; }
+.indice-chip {
+  font: inherit; font-size: 0.85rem; font-weight: 700;
+  flex: none; max-width: 70%;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0.3rem 0.8rem;
+  border-radius: 999px; border: 1px solid var(--bordo-controllo);
+  background: var(--superficie); color: var(--inchiostro);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; touch-action: manipulation;
+}
+.indice-chip:first-child { margin-left: 12px; }
+.indice-chip:last-child { margin-right: 12px; }
+.indice-chip.ridurre { border-style: dashed; }
+.indice-chip.sel { background: var(--inchiostro); border-color: var(--inchiostro); border-style: solid; color: var(--fondo); }
+.indice-info { margin: -4px 0 0; text-align: center; }
+.punto-richiamo { width: 8px; height: 8px; border-radius: 50%; background: var(--attenzione); flex: none; }
+.richiamo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 12px; background: var(--attenzione-tenue); }
+
+/* Piano della fase in una riga */
+.promemoria.compatto .piano-riga summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: 0.3rem; }
+.promemoria.compatto .piano-riga ul { list-style: none; margin: 0.2rem 0 0.3rem; padding: 0; display: grid; gap: 0.25rem; }
+.azioni-contingenza { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-top: 0.35rem; border-top: 1px solid color-mix(in srgb, var(--penna) 18%, transparent); }
+.azioni-contingenza > .dro, .azioni-contingenza > .multiplo { flex: 1 1 100%; }
+.sigla { font-weight: 700; color: var(--penna); min-width: 2.6em; }
+
+/* Barra fissa dei comportamenti da ridurre */
+.barra-comportamenti {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  max-width: 520px; margin-inline: auto;
+  display: grid; gap: 6px;
+  padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--fondo);
+  border-top: 1px solid var(--linea);
+  box-shadow: 0 -6px 16px rgb(0 0 0 / 0.08);
+}
+/* L'ultimo dato e il suo Annulla stanno sopra i tasti, lontani dal +1. */
+.barra-ultimo { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; }
+.barra-ultimo > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-tasti { display: grid; gap: 8px; }
+.tasto-barra {
+  font: inherit;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nome nome" "valore azione";
+  align-items: end; gap: 2px 6px; text-align: left;
+  min-height: 64px; padding: 8px 10px;
+  border-radius: 14px; border: 1px solid var(--critico);
+  background: var(--superficie); color: var(--inchiostro);
+  cursor: pointer; touch-action: manipulation; user-select: none;
+  position: relative;
+}
+.tasto-barra:active { transform: scale(0.985); }
+.tb-nome { grid-area: nome; font-size: 0.8rem; font-weight: 700; line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tb-valore { grid-area: valore; font-size: 1.5rem; font-weight: 500; line-height: 1; }
+.tb-azione { grid-area: azione; font-weight: 700; color: var(--critico); }
+.tasto-barra.in-corso { background: var(--critico); color: var(--superficie); }
+.tasto-barra.in-corso .tb-azione { color: var(--superficie); }
+.tasto-barra.chiede::after { content: ""; position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--attenzione); }
+.tasto-barra.appena { animation: appena-barra 0.6s ease-out; }
+@keyframes appena-barra {
+  from { box-shadow: 0 0 0 3px var(--critico); }
+  to { box-shadow: 0 0 0 0 transparent; }
+}
+/* Spazio sotto la carta per la barra, e il messaggio sopra la barra. */
+body.con-barra .telefono { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+body.con-barra .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+body.con-tasti .telefono { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+body.con-tasti .toast { bottom: calc(146px + env(safe-area-inset-bottom, 0px)); }
