@@ -42,9 +42,10 @@ BR.archivio.avvia().then(function (statoIniziale) {
   function testataRete() {
     var on = A.online(stato);
     var attesa = A.inAttesa(stato);
-    return '<button type="button" class="rete ' + (on ? 'on' : 'off') + '" data-azione="rete" aria-label="Rete: ' + (on ? 'online' : 'offline') + '. Tocca per simulare il cambio.">' +
+    return '<button type="button" class="rete ' + (on ? 'on' : 'off') + '" data-azione="rete" aria-label="Rete: ' + (on ? 'online' : 'offline') +
+      (attesa ? ', ' + attesa + ' da inviare' : '') + '. Tocca per simulare il cambio.">' +
       '<span class="rete-punto"></span>' + (on ? 'Online' : 'Offline') +
-      (attesa ? '<span class="coda dato">' + attesa + '</span>' : '') + '</button>';
+      (attesa ? '<span class="coda dato" title="Da inviare">' + attesa + '</span>' : '') + '</button>';
   }
 
   function provaSincronizzazione(silenziosa) {
@@ -118,9 +119,10 @@ BR.archivio.avvia().then(function (statoIniziale) {
         '<button class="btn btn-piatto indietro" type="button" data-azione="oggi" aria-label="Torna ai pazienti, la seduta resta aperta">‹</button>' +
         '<div class="seduta-titolo"><span class="dato codice">' + esc(s.codice) + '</span><span class="dato orologio" data-live="sessione">' + U.mmss(Date.now() - sess.inizio) + '</span></div>' +
         testataRete() +
-        '<button class="btn btn-primario" type="button" data-azione="termina">Termina</button>' +
+        '<button class="btn" type="button" data-azione="termina">Termina</button>' +
       '</header>' +
-      (!A.online(stato) ? '<div class="avviso">Offline: ogni tocco viene salvato sul telefono.</div>' : '') +
+      (!A.online(stato) ? '<div class="avviso">Offline: ogni tocco viene salvato sul telefono' +
+        (A.inAttesa(stato) ? ' (' + A.inAttesa(stato) + ' da inviare)' : '') + '.</div>' : '') +
       '<div class="seduta-setting"><span class="tenue piccolo">Setting: <strong>' + esc(sess.setting || '–') + '</strong></span>' +
         '<button class="btn btn-piatto piccolo" type="button" data-azione="setting">Cambia</button></div>' +
       (sess.scaletta ? sedutaConScaletta(s, sess)
@@ -730,18 +732,29 @@ BR.archivio.avvia().then(function (statoIniziale) {
         '</article>';
     }).join('');
 
-    return testa + controlli + (carte || '<p class="tenue">Nessun target visibile. Tocca Personalizza per sceglierli.</p>') +
+    return testa + controlli +
+      (carte ? '<p class="tenue piccolo">Verde: il target va nella direzione voluta (per un comportamento da ridurre, “In calo” è verde).</p>' + carte
+        : '<p class="tenue">Nessun target visibile. Tocca Personalizza per sceglierli.</p>') +
       '<p class="tenue piccolo nota-locale">Calcolato sul telefono, anche senza rete.</p>';
   }
 
   // ---- Disegno e aggiornamenti dal vivo ----------------------------------------
 
-  function disegna() {
+  // Lo schermo si ridisegna a ogni dato: il fuoco torna sul pulsante usato
+  // (tastiera e lettori di schermo non ripartono dall'inizio) e la carta del
+  // target appena registrato lampeggia.
+  function disegna(appenaRegistrato) {
     var y = window.scrollY;
+    var fuoco = U.chiaveFuoco(app);
     var html = ({ oggi: schermoOggi, seduta: schermoSeduta, fine: schermoFine, riepilogo: schermoRiepilogo }[vista.schermo] || schermoOggi)();
     app.innerHTML = html;
     app.setAttribute('data-schermo', vista.schermo);
     window.scrollTo(0, y);
+    U.rimettiFuoco(app, fuoco);
+    if (appenaRegistrato) {
+      var carta = document.getElementById('s-' + appenaRegistrato);
+      if (carta) carta.classList.add('appena');
+    }
     gestisciWakeLock();
   }
 
@@ -856,7 +869,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     if (A.online(stato)) A.sincronizza(stato);
     salva();
     vibra(15);
-    disegna();
+    disegna(t.id);
   }
 
   app.addEventListener('click', function (e) {
@@ -918,7 +931,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
         if (A.online(stato)) A.sincronizza(stato);
         salva();
         disegna();
-        U.toast('Ultimo dato annullato');
+        U.toast('Annullato l’ultimo dato di ' + t.nome);
         break;
       }
       case 'annulla-conseguenza':

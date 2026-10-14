@@ -98,6 +98,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     disegnaElenco();
     var s = corrente();
     var main = document.getElementById('principale');
+    var fuoco = U.chiaveFuoco(main);
     var operatori = s.operatori.map(function (id) { var o = A.operatore(stato, id); return o ? o.nome : id; }).join(', ');
     var html =
       '<div class="testata">' +
@@ -116,6 +117,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
         repertorio: function (x) { return DR.vistaRepertorio(x, stato); }, protocolli: function (x) { return DR.vistaProtocolli(x, stato); }, schedule: vistaSchedule, sessioni: vistaSessioni
       }[vista.scheda] || vistaGrafici)(s) + '</div>';
     main.innerHTML = html;
+    U.rimettiFuoco(main, fuoco);
   }
 
   function pillolaCriterio(c) {
@@ -126,22 +128,45 @@ BR.archivio.avvia().then(function (statoIniziale) {
     return '<span class="pillola">Sotto criterio</span>';
   }
 
+  // Dati del grafico di un target: serie, criterio e punti da disegnare.
+  function datiGrafico(s, pr, t) {
+    var tutti = A.serie(stato, s, pr, t, { soloSincronizzate: true });
+    var criterio = A.criterioCorrente(pr, t);
+    // Con la scaletta, il grafico può mostrare i soli probe o il solo insegnamento.
+    var conContesti = Sd.discreto(t) && tutti.some(function (p) { return p.perContesto && (p.perContesto.probe || p.perContesto.insegnamento); });
+    var contesto = !conContesti ? '' : vista.contesti[t.id] != null ? vista.contesti[t.id] : (criterio && criterio.contesto) || '';
+    return {
+      t: t, tutti: tutti, c: A.statoCriterio(pr, t, tutti), criterio: criterio, tipo: M.TIPI[t.metodo.tipo],
+      conContesti: conContesti, contesto: contesto,
+      punti: contesto ? Sd.serieNelContesto(tutti, contesto) : tutti,
+      criterioSulGrafico: altroValore(criterio) || (criterio && (criterio.contesto || '') !== contesto) ? null : criterio
+    };
+  }
+
+  // Stessa scala verticale per i target del programma con la stessa unità:
+  // problema e comportamento sostitutivo si confrontano a colpo d'occhio
+  // (standard di Kubina et al., 2017; vedi docs/design-esperienza-utente.md).
+  function massimiPerUnita(dati) {
+    var massimi = {};
+    dati.forEach(function (d) {
+      var m = d.criterioSulGrafico ? d.criterioSulGrafico.soglia : 0;
+      d.punti.forEach(function (p) { if (p.valore != null && p.valore > m) m = p.valore; });
+      massimi[d.tipo.unita] = Math.max(massimi[d.tipo.unita] || 0, m);
+    });
+    return massimi;
+  }
+
   // Grafici: un grafico per target, raggruppati per programma.
   function vistaGrafici(s) {
     if (!s.programmi.length) return vuoto('Nessun programma per questo paziente.', 'Crea il primo programma nella scheda Programmi e target.');
     return s.programmi.map(function (pr) {
       var fase = A.faseCorrente(pr);
       var prossima = P.prossimaFase(pr);
-      var carte = pr.target.map(function (t) {
-        var tutti = A.serie(stato, s, pr, t, { soloSincronizzate: true });
-        var c = A.statoCriterio(pr, t, tutti);
-        var criterio = A.criterioCorrente(pr, t);
-        var tipo = M.TIPI[t.metodo.tipo];
-        // Con la scaletta, il grafico può mostrare i soli probe o il solo insegnamento.
-        var conContesti = Sd.discreto(t) && tutti.some(function (p) { return p.perContesto && (p.perContesto.probe || p.perContesto.insegnamento); });
-        var contesto = !conContesti ? '' : vista.contesti[t.id] != null ? vista.contesti[t.id] : (criterio && criterio.contesto) || '';
-        var punti = contesto ? Sd.serieNelContesto(tutti, contesto) : tutti;
-        var criterioSulGrafico = altroValore(criterio) || (criterio && (criterio.contesto || '') !== contesto) ? null : criterio;
+      var dati = pr.target.map(function (t) { return datiGrafico(s, pr, t); });
+      var massimi = massimiPerUnita(dati);
+      var carte = dati.map(function (d) {
+        var t = d.t, tutti = d.tutti, c = d.c, criterio = d.criterio, tipo = d.tipo;
+        var conContesti = d.conContesti, contesto = d.contesto, punti = d.punti, criterioSulGrafico = d.criterioSulGrafico;
         var ultimo = punti.length ? punti[punti.length - 1] : null;
         var chiaveTab = t.id;
         var tabella = vista.tabelle[chiaveTab];
@@ -170,7 +195,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
           (conContesti ? sceltaContesto(t.id, contesto, criterio) : '') +
           // Se il criterio usa un altro valore (livello di prompt, prima prova),
           // la sua linea non va sul grafico delle risposte indipendenti.
-          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: criterioSulGrafico, titolo: t.nome, larghezza: 600, altezza: 230 }) + '</div>' +
+          '<div class="grafico-box">' + G.aba({ punti: punti, tipo: t.metodo.tipo, criterio: criterioSulGrafico, titolo: t.nome, massimo: massimi[tipo.unita], larghezza: 600, altezza: 375 }) + '</div>' +
           (punti.escluse ? '<p class="tenue piccolo">' + punti.escluse + (punti.escluse === 1 ? ' sessione registrata' : ' sessioni registrate') + ' con un tipo di misura precedente non ' + (punti.escluse === 1 ? 'è' : 'sono') + ' nel grafico.</p>' : '') +
           extra +
           '<button class="btn btn-piatto piccolo" type="button" data-azione="tabella" data-id="' + chiaveTab + '">' + (tabella ? 'Nascondi i valori' : 'Mostra i valori in tabella') + '</button>' +
