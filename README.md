@@ -40,6 +40,7 @@ docs/obiettivi-numerici.md    obiettivi numerici, repertorio e libreria dei prot
 docs/organizzazione-seduta.md scaletta della seduta, probe e insegnamento
 docs/decisione-tecnologica.md scelte tecniche e sincronizzazione (passo 4)
 docs/design-esperienza-utente.md ricerca su design ed esperienza utente, con proposte per l'app
+docs/analisi-competitor-mercato.md competitor, prezzi e usi commerciali
 app/                          l'app, file statici senza passaggi di build
   index.html                  pagina di ingresso
   desktop.html, mobile.html   configurazione e grafici; seduta e riepilogo
