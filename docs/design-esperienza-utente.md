@@ -162,6 +162,8 @@ Oggi la seduta è una lista di carte, una per target, ognuna con titolo, piano d
 
 Questa proposta cambia la parte dell'app su cui lavora il thread "Organizzazione della seduta" (blocchi di rilevazione, training, probe). Va decisa insieme a quel lavoro, non sopra.
 
+**Fatto il 14/10/2026, come opzione.** In seduta si sceglie la vista *Elenco* (quella di prima, predefinita) o *Un target alla volta*, che segue i punti 1-3 e 5 sopra, rispettando la scaletta in blocchi: blocco in corso in tre righe, indice dei target del blocco e di tutta la seduta, barra fissa con i comportamenti da ridurre misurati con un tocco (fino a 4), riga "Ultimo dato" con *Annulla* sopra i tasti della barra e quindi lontana dal +1. I target nascosti che aspettano una risposta (intervallo, DRO, DRL) hanno un punto nell'indice e compaiono in "Da segnare"; i loro timer continuano a vibrare. La scelta resta sul telefono, così si possono confrontare le due viste in seduta (prova suggerita nella sezione 10).
+
 ### 3.6 Senza rete
 
 Linee guida di web.dev sull'esperienza offline (Kurtuldu & Steiner, 2016) [V]: dire subito in che stato è l'app e cosa si può ancora fare; sincronizzare appena torna la rete e mostrare se i dati sono sincronizzati; linguaggio semplice senza termini tecnici; non affidarsi solo al colore; non bloccare l'utente con finestre di attesa.
@@ -366,7 +368,7 @@ Ordinata per rapporto tra beneficio e sforzo. S = piccolo, M = medio, L = grande
 | 19 | Scala tipografica e spaziature come variabili | CSS | M | sistema di design |
 | 20 | Prova con operatori in seduta simulata, SUS e NASA-TLX | fuori dal codice | L | sezione 10 |
 
-**Stato al 14/10/2026.** Fatti nell'app: 1 (nuova variabile `--bordo-controllo`, 3,19:1 o più su tutti i fondi in entrambi i temi), 2 e 3 (tutti i pulsanti del telefono almeno 44 px, chip, scelte e conseguenze 48 px; "Termina" con stile secondario), 4 (le schede vanno a capo invece di scorrere: a 1024 px ne restavano nascoste tre), 5 (proporzione 5:8, al massimo 360 px di altezza su una colonna), 6, 7 (il pulsante è in fondo all'elenco dei pazienti), 8, 9 (anche sul desktop), 11 in parte (lampo sulla carta registrata; il numero di dati da inviare è anche nell'avviso offline e nell'etichetta per i lettori di schermo; il messaggio di annullamento nomina il target). "Annulla ultimo" resta in cima alla carta per il motivo scritto in 3.3. Non fatti: 10 (serve scegliere la parola), il suono facoltativo e l'avviso sullo schermo di iPhone, 12-20.
+**Stato al 14/10/2026.** Fatti nell'app: 1 (nuova variabile `--bordo-controllo`, 3,19:1 o più su tutti i fondi in entrambi i temi), 2 e 3 (tutti i pulsanti del telefono almeno 44 px, chip, scelte e conseguenze 48 px; "Termina" con stile secondario), 4 (le schede vanno a capo invece di scorrere: a 1024 px ne restavano nascoste tre), 5 (proporzione 5:8, al massimo 360 px di altezza su una colonna), 6, 7 (il pulsante è in fondo all'elenco dei pazienti), 8, 9 (anche sul desktop), 11 in parte (lampo sulla carta registrata; il numero di dati da inviare è anche nell'avviso offline e nell'etichetta per i lettori di schermo; il messaggio di annullamento nomina il target), 12 come opzione (vedi 3.5). "Annulla ultimo" resta in cima alla carta per il motivo scritto in 3.3. In più i riquadri aperti (definizione, piano di crisi, piano della fase) restano aperti dopo ogni tocco. Non fatti: 10 (serve scegliere la parola), il suono facoltativo e l'avviso sullo schermo di iPhone, 13-20.
 
 ---
 

@@ -10,7 +10,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
   var esc = U.esc;
 
   var stato = statoIniziale;
-  var vista = { schermo: 'oggi', soggettoId: null, sessioneId: null, personalizza: false };
+  var vista = { schermo: 'oggi', soggettoId: null, sessioneId: null, personalizza: false, focus: null };
   var app = document.getElementById('app');
   var wakeLock = null;
 
@@ -123,10 +123,198 @@ BR.archivio.avvia().then(function (statoIniziale) {
       '</header>' +
       (!A.online(stato) ? '<div class="avviso">Offline: ogni tocco viene salvato sul telefono' +
         (A.inAttesa(stato) ? ' (' + A.inAttesa(stato) + ' da inviare)' : '') + '.</div>' : '') +
-      '<div class="seduta-setting"><span class="tenue piccolo">Setting: <strong>' + esc(sess.setting || '–') + '</strong></span>' +
+      '<div class="seduta-opzioni"><div class="seduta-setting"><span class="tenue piccolo">Setting: <strong>' + esc(sess.setting || '–') + '</strong></span>' +
         '<button class="btn btn-piatto piccolo" type="button" data-azione="setting">Cambia</button></div>' +
-      (sess.scaletta ? sedutaConScaletta(s, sess)
+      sceltaVista() + '</div>' +
+      (unoAllaVolta() ? sedutaUnoAllaVolta(s, sess)
+        : sess.scaletta ? sedutaConScaletta(s, sess)
         : '<div class="strumenti">' + voci(s).map(function (x) { return carta(sess, x.programma, x.target); }).join('') + '</div>');
+  }
+
+  // ---- Vista "un target alla volta" ---------------------------------------------
+  //
+  // Proposta della ricerca di design (docs/design-esperienza-utente.md, 3.5):
+  // i comportamenti da ridurre in una barra fissa in basso, sempre a portata di
+  // pollice; al centro un solo target, scelto da un indice in alto; il piano
+  // della fase in una riga. È un'opzione per telefono: l'elenco resta com'era.
+
+  function unoAllaVolta() { return U.preferenza('vista-seduta') === 'uno'; }
+
+  function sceltaVista() {
+    var uno = unoAllaVolta();
+    return '<div class="seduta-vista"><span class="tenue piccolo" id="etichetta-vista">Vista</span>' +
+      '<div class="segmenti" role="group" aria-labelledby="etichetta-vista">' +
+        '<button type="button" class="segmento' + (uno ? '' : ' sel') + '" aria-pressed="' + !uno + '" data-azione="vista" data-valore="elenco">Elenco</button>' +
+        '<button type="button" class="segmento' + (uno ? ' sel' : '') + '" aria-pressed="' + uno + '" data-azione="vista" data-valore="uno">Un target alla volta</button>' +
+      '</div></div>';
+  }
+
+  // Vanno nella barra i comportamenti da ridurre registrati con un tocco
+  // (frequenza, tasso, durata). Gli altri (intervalli, ABC) restano nell'indice.
+  var MAX_BARRA = 4;
+  function inBarra(t) {
+    return t.direzione === 'ridurre' && ['contatore', 'cronometro'].indexOf(M.TIPI[t.metodo.tipo].strumento) !== -1;
+  }
+
+  // I target della vista: prima quelli del blocco in corso, poi quelli di tutta
+  // la seduta; quelli della barra in fondo all'indice (per piano di crisi,
+  // conseguenze e timer).
+  function targetVista(s, sess) {
+    var vis = Sd.targetVisibili(sess, voci(s).map(function (x) { return x.target.id; }));
+    var ids = vis.blocco.concat(vis.continui);
+    var barra = ids.filter(function (id) { return inBarra(targetDaId(id)); }).slice(0, MAX_BARRA);
+    var centro = ids.filter(function (id) { return barra.indexOf(id) === -1; });
+    return { indice: centro.concat(barra), barra: barra, continui: vis.continui };
+  }
+
+  function sedutaUnoAllaVolta(s, sess) {
+    var c = sess.scaletta ? Sd.bloccoInCorso(sess) : null;
+    var tv = targetVista(s, sess);
+    if (tv.indice.indexOf(vista.focus) === -1) vista.focus = tv.indice[0] || null;
+    var x = vista.focus ? A.trovaTarget(s, vista.focus) : null;
+    var altri = tv.indice.filter(function (id) { return id !== vista.focus; });
+    var daSegnare = altri.filter(function (id) { return chiedeAttenzione(sess, id); });
+    // Del blocco restano le regole del probe e della pausa, non la descrizione generica.
+    var avviso = c && !/blocco-descr/.test(avvisoBlocco(sess, c)) ? avvisoBlocco(sess, c) : '';
+    return '<div class="uno-alla-volta">' +
+      (sess.scaletta ? testaBloccoCompatta(sess, c) + (scalettaAperta ? elencoScaletta(sess, c) : '') + avviso : '') +
+      (tv.indice.length ? indiceTarget(sess, tv, c) : '<p class="tenue">Nessun target in questo blocco.</p>') +
+      (daSegnare.length ? '<div class="richiamo"><span class="piccolo"><strong>Da segnare:</strong></span>' + daSegnare.map(function (id) {
+        return '<button type="button" class="chip" data-azione="focus" data-id="' + id + '">' + esc(targetDaId(id).nome) + '</button>';
+      }).join('') + '</div>' : '') +
+      (x ? carta(sess, x.programma, x.target, true) : '') +
+      timerNascosti(sess, altri) +
+      barraComportamenti(sess, tv.barra) +
+    '</div>';
+  }
+
+  // Il blocco in corso in tre righe: nome e tempo, barra, scaletta e "Passa a".
+  function testaBloccoCompatta(sess, c) {
+    if (!c) return testaBlocco(sess, c);
+    var tipo = Sd.TIPI[c.blocco.tipo] || Sd.TIPI.attivita;
+    var durata = (+c.blocco.durataMin || 0) * 60000;
+    var trascorso = Date.now() - c.inizio;
+    var prossimo = sess.scaletta[c.indice + 1];
+    return '<div class="blocco-corrente compatto ctx-bordo-' + tipo.contesto + (trascorso > durata ? ' oltre' : '') + '" data-live-blocco="' + c.blocco.id + '">' +
+      '<div class="blocco-riga"><strong class="blocco-nome">' + esc(c.blocco.nome) + '</strong>' +
+        '<span class="dato blocco-tempo"><span data-live="blocco" data-inizio="' + c.inizio + '" data-durata="' + durata + '">' + U.mmss(trascorso) + '</span> / ' + U.mmss(durata) + '</span></div>' +
+      '<span class="barra-tempo"><span data-live="blocco-barra" data-inizio="' + c.inizio + '" data-durata="' + durata + '" style="width:' + Math.min(100, (trascorso / Math.max(durata, 1)) * 100) + '%"></span></span>' +
+      (c.blocco.nota ? '<p class="piccolo blocco-nota">' + esc(c.blocco.nota) + '</p>' : '') +
+      '<div class="blocco-riga">' +
+        '<button class="btn btn-piatto piccolo" type="button" data-azione="scaletta-mostra" aria-expanded="' + scalettaAperta + '" aria-label="Scaletta, blocco ' + (c.indice + 1) + ' di ' + sess.scaletta.length + ', ' + esc(tipo.breve) + '">' +
+          (scalettaAperta ? 'Chiudi' : 'Scaletta ' + (c.indice + 1) + '/' + sess.scaletta.length) + '</button>' +
+        '<button class="btn passa-a" type="button" data-azione="blocco-avanti">' + (prossimo ? 'Passa a: ' + esc(prossimo.nome) : 'Chiudi l’ultimo blocco') + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function indiceTarget(sess, tv, c) {
+    var i = tv.indice.indexOf(vista.focus);
+    var dove = tv.continui.indexOf(vista.focus) !== -1 ? 'per tutta la seduta' : c ? 'del blocco' : '';
+    return '<div class="indice">' +
+        '<button class="btn btn-piatto indice-freccia" type="button" data-azione="focus-sposta" data-verso="-1" aria-label="Target precedente">‹</button>' +
+        '<div class="indice-strip">' + tv.indice.map(function (id) {
+          var t = targetDaId(id), sel = id === vista.focus, att = !sel && chiedeAttenzione(sess, id);
+          return '<button type="button" class="indice-chip' + (sel ? ' sel' : '') + (t.direzione === 'ridurre' ? ' ridurre' : '') + '" aria-pressed="' + sel + '" data-azione="focus" data-id="' + id + '">' +
+            (att ? '<span class="punto-richiamo" aria-hidden="true"></span>' : '') + esc(t.nome) + (att ? '<span class="sr">, da segnare</span>' : '') + '</button>';
+        }).join('') + '</div>' +
+        '<button class="btn btn-piatto indice-freccia" type="button" data-azione="focus-sposta" data-verso="1" aria-label="Target successivo">›</button>' +
+      '</div>' +
+      '<p class="indice-info tenue piccolo">' + (i + 1) + ' di ' + tv.indice.length + (dove ? ' · ' + dove : '') + '</p>';
+  }
+
+  // Un target non visibile che aspetta una risposta: intervallo da segnare,
+  // rinforzo del DRO o del DRL dovuto, controllo momentaneo.
+  function chiedeAttenzione(sess, id) {
+    var x = A.trovaTarget(sog(), id);
+    if (!x) return false;
+    var t = x.target, ora = Date.now();
+    if (M.TIPI[t.metodo.tipo].strumento === 'intervalli') {
+      var si = statoIntervalli(sess, t);
+      if (si.avviato && si.daSegnare !== -1) return true;
+    }
+    if (senzaConseguenze(sess, t)) return false;
+    var ev = evValidi(sess, t);
+    return contingenzeDi(sess, x.programma, t).some(function (c) {
+      if (c.targetId !== t.id) return false;
+      var st = c.procedura === 'dro' ? P.statoDro(c, ev, ora) : c.procedura === 'drl' ? P.statoDrl(c, ev, ora) : null;
+      return !!(st && st.attivo && (st.dovuto || st.domanda != null));
+    });
+  }
+
+  // I timer dei target non visibili: elementi nascosti con la scadenza, così
+  // il controllo dal vivo vibra e ridisegna anche per loro.
+  function timerNascosti(sess, ids) {
+    var ora = Date.now(), tutti = M.eventiValidi(A.eventiDi(stato, sess.id)), scadenze = [];
+    ids.forEach(function (id) {
+      var x = A.trovaTarget(sog(), id);
+      if (!x || senzaConseguenze(sess, x.target)) return;
+      var ev = evValidi(sess, x.target);
+      contingenzeDi(sess, x.programma, x.target).forEach(function (c) {
+        if (c.targetId !== id) return;
+        var st = c.procedura === 'dro' ? P.statoDro(c, ev, ora)
+          : c.procedura === 'drl' ? P.statoDrl(c, ev, ora)
+          : c.schema && c.schema.segnalato ? P.statoMultiplo(c, tutti, ora) : null;
+        if (st && st.attivo && st.scadenza > ora) scadenze.push(st.scadenza);
+      });
+    });
+    return scadenze.map(function (sc) { return '<span hidden data-live="timer" data-scadenza="' + sc + '"></span>'; }).join('');
+  }
+
+  // L'ultimo dato della seduta, di qualunque target: la barra lo mostra (conferma
+  // del tocco anche dove il telefono non vibra) e lo annulla.
+  function ultimoDato(sess) {
+    var ev = M.eventiValidi(A.eventiDi(stato, sess.id)).filter(function (e) { return e.tipo !== 'conseguenza'; });
+    var e = ev[ev.length - 1];
+    var t = e ? targetDaId(e.targetId) : null;
+    return t ? { evento: e, target: t, testo: descriviEvento(e) } : null;
+  }
+
+  function descriviEvento(e) {
+    var v = e.valore || {};
+    var livello = M.PROMPT.find(function (l) { return l.id === v.prompt; });
+    switch (e.tipo) {
+      case 'occorrenza': return '+1';
+      case 'inizio': return 'inizio episodio';
+      case 'fine': return 'fine episodio';
+      case 'istruzione': return 'istruzione data';
+      case 'risposta': return 'risposta';
+      case 'avvio': return 'avvio osservazione';
+      case 'intervallo': return 'intervallo ' + (v.indice + 1) + ': ' + (v.presente ? 'sì' : 'no');
+      case 'prova': return (v.esito === 'errore' ? 'errore' : 'corretta, ' + (livello ? livello.nome.toLowerCase() : v.prompt)) + (v.elementoTesto ? ' (' + v.elementoTesto + ')' : '');
+      case 'passo': return 'passo ' + (v.indice + 1) + ': ' + (livello ? livello.nome.toLowerCase() : v.prompt);
+      case 'abc': return 'episodio ABC';
+      default: return e.tipo;
+    }
+  }
+
+  function barraComportamenti(sess, ids) {
+    var u = ultimoDato(sess);
+    return '<div class="barra-comportamenti">' +
+      '<div class="barra-ultimo"><span class="piccolo">' + (u ? 'Ultimo: <strong>' + esc(u.target.nome) + '</strong>, ' + esc(u.testo) : 'Nessun dato registrato') + '</span>' +
+        (u ? '<button class="btn btn-piatto piccolo annulla" type="button" data-azione="annulla-ultimo" aria-label="Annulla l’ultimo dato: ' + esc(u.target.nome) + ', ' + esc(u.testo) + '">Annulla</button>' : '') + '</div>' +
+      (ids.length ? '<div class="barra-tasti" role="group" aria-label="Comportamenti da ridurre" style="grid-template-columns: repeat(' + ids.length + ', minmax(0, 1fr))">' +
+        ids.map(function (id) { return tastoBarra(sess, targetDaId(id)); }).join('') + '</div>' : '') +
+    '</div>';
+  }
+
+  function tastoBarra(sess, t) {
+    var ev = evValidi(sess, t);
+    var att = chiedeAttenzione(sess, t.id) ? ' chiede' : '';
+    var nome = '<span class="tb-nome">' + esc(t.nome) + '</span>';
+    if (M.TIPI[t.metodo.tipo].strumento === 'cronometro') {
+      var ultimo = ev[ev.length - 1];
+      var inCorso = ultimo && ultimo.tipo === 'inizio';
+      var episodi = ev.filter(function (e) { return e.tipo === 'inizio'; }).length;
+      return '<button type="button" class="tasto-barra' + (inCorso ? ' in-corso' : '') + att + '" id="b-' + t.id + '" data-azione="' + (inCorso ? 'fine' : 'inizio') + '" data-id="' + t.id + '"' +
+        ' aria-label="' + (inCorso ? 'Fine dell’episodio di ' : 'Inizio di un episodio di ') + esc(t.nome) + '">' + nome +
+        (inCorso ? '<span class="dato tb-valore" data-live="episodio" data-da="' + ultimo.t + '">' + U.mmss(Date.now() - ultimo.t) + '</span><span class="tb-azione">Fine</span>'
+          : '<span class="dato tb-valore">' + episodi + '</span><span class="tb-azione">Inizio</span>') + '</button>';
+    }
+    var n = ev.filter(function (e) { return e.tipo === 'occorrenza'; }).length;
+    return '<button type="button" class="tasto-barra' + att + '" id="b-' + t.id + '" data-azione="occorrenza" data-id="' + t.id + '"' +
+      ' aria-label="Aggiungi un’occorrenza di ' + esc(t.nome) + ', finora ' + n + '">' + nome +
+      '<span class="dato tb-valore">' + n + '</span><span class="tb-azione">+1</span></button>';
   }
 
   // ---- Scaletta della seduta ---------------------------------------------------
@@ -213,7 +401,8 @@ BR.archivio.avvia().then(function (statoIniziale) {
   // Prove registrate nel blocco in corso (per i contatori delle prove).
   function bloccoDi(sess) { return sess.scaletta ? Sd.bloccoInCorso(sess) : null; }
 
-  function carta(sess, pr, t) {
+  // compatta: il piano della fase in una riga (vista "un target alla volta").
+  function carta(sess, pr, t, compatta) {
     var tipo = M.TIPI[t.metodo.tipo];
     var corpo = ({
       contatore: strContatore, cronometro: strCronometro, latenza: strLatenza,
@@ -223,9 +412,9 @@ BR.archivio.avvia().then(function (statoIniziale) {
     return '<section class="strumento" id="s-' + t.id + '">' +
       '<div class="strumento-testa"><div><h3>' + esc(t.nome) + '</h3><span class="tenue piccolo">' + esc(tipo.nome) + ' · ' + esc(P.nomeFase(pr, A.voceDiSessione(pr, sess))) + '</span></div>' +
       (ev.length ? '<button class="btn btn-piatto piccolo annulla" type="button" data-azione="annulla" data-id="' + t.id + '">Annulla ultimo</button>' : '') + '</div>' +
-      promemoria(sess, pr, t) +
+      promemoria(sess, pr, t, compatta) +
       corpo +
-      (t.definizione && t.definizione.include ? '<details class="definizione"><summary>Definizione operativa</summary><p>' + esc(t.definizione.include) + '</p>' +
+      (t.definizione && t.definizione.include ? '<details class="definizione" data-chiave="def-' + t.id + '"><summary>Definizione operativa</summary><p>' + esc(t.definizione.include) + '</p>' +
         (t.definizione.esclude ? '<p class="tenue">Non conta: ' + esc(t.definizione.esclude) + '</p>' : '') + '</details>' : '') +
       '</section>';
   }
@@ -245,12 +434,15 @@ BR.archivio.avvia().then(function (statoIniziale) {
     });
   }
 
-  function promemoria(sess, pr, t) {
-    // Nel probe i target del blocco non ricevono conseguenze, salvo che il
+  // Nel probe i target del blocco non ricevono conseguenze, salvo che il
   // blocco preveda il rinforzo della risposta corretta.
+  function senzaConseguenze(sess, t) {
     var bl = bloccoDi(sess);
-    var inProbe = bl && !bl.blocco.rinforzoProbe && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1;
-    return pianoCrisi(pr, t) + (inProbe ? '' : conseguenze(sess, pr, t));
+    return !!(bl && !bl.blocco.rinforzoProbe && Sd.TIPI[bl.blocco.tipo] && Sd.TIPI[bl.blocco.tipo].contesto === 'probe' && bl.blocco.targetIds.indexOf(t.id) !== -1);
+  }
+
+  function promemoria(sess, pr, t, compatta) {
+    return pianoCrisi(pr, t) + (senzaConseguenze(sess, t) ? '' : compatta ? conseguenzeCompatte(sess, pr, t) : conseguenze(sess, pr, t));
   }
 
   // Per i comportamenti da ridurre, il piano di crisi a portata di mano.
@@ -258,7 +450,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
     if (t.ruolo !== 'problema') return '';
     var c = P.sicurezzaDi(pr).crisi;
     if (!c.passi) return '';
-    return '<details class="crisi"><summary>Piano di crisi</summary>' +
+    return '<details class="crisi" data-chiave="crisi-' + t.id + '"><summary>Piano di crisi</summary>' +
       (c.segnali ? '<p><strong>Quando:</strong> ' + esc(c.segnali) + '</p>' : '') +
       '<p><strong>Cosa fare:</strong> ' + esc(c.passi) + '</p>' +
       (c.fine ? '<p><strong>È finita quando:</strong> ' + esc(c.fine) + '</p>' : '') +
@@ -278,6 +470,28 @@ BR.archivio.avvia().then(function (statoIniziale) {
     }).join('') +
     (miei.length ? '<li class="promemoria-annulla"><button class="btn btn-piatto piccolo" type="button" data-azione="annulla-conseguenza" data-id="' + t.id + '">Annulla ultima conseguenza</button></li>' : '') +
     '</ul>';
+  }
+
+  // Lo stesso piano in una riga ("FCT · EXT") che si apre al tocco; i tasti per
+  // segnare le conseguenze restano sempre visibili, con la sigla se sono più d'una.
+  function conseguenzeCompatte(sess, pr, t) {
+    var righe = contingenzeDi(sess, pr, t);
+    if (!righe.length) return '';
+    var tm = {};
+    pr.target.forEach(function (x) { tm[x.id] = x; });
+    var tutti = M.eventiValidi(A.eventiDi(stato, sess.id));
+    var miei = evValidi(sess, t).filter(function (e) { return e.tipo === 'conseguenza'; });
+    var sigle = righe.map(P.siglaContingenza).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    var azioni = righe.map(function (c) {
+      var a = azioneConseguenza(sess, pr, t, c, tutti);
+      return a ? '<div class="azioni-contingenza">' + (righe.length > 1 ? '<span class="sigla">' + esc(P.siglaContingenza(c)) + '</span>' : '') + a + '</div>' : '';
+    }).join('');
+    return '<div class="promemoria compatto">' +
+      '<details class="piano-riga" data-chiave="piano-' + t.id + '"><summary>Piano: <strong>' + esc(sigle.join(' · ')) + '</strong></summary>' +
+        '<ul>' + righe.map(function (c) { return '<li><strong>' + esc(P.siglaContingenza(c)) + '</strong> ' + esc(P.descriviContingenza(c, tm)) + '</li>'; }).join('') + '</ul></details>' +
+      azioni +
+      (miei.length ? '<div class="promemoria-annulla"><button class="btn btn-piatto piccolo" type="button" data-azione="annulla-conseguenza" data-id="' + t.id + '">Annulla ultima conseguenza</button></div>' : '') +
+    '</div>';
   }
 
   /*
@@ -743,19 +957,40 @@ BR.archivio.avvia().then(function (statoIniziale) {
   // Lo schermo si ridisegna a ogni dato: il fuoco torna sul pulsante usato
   // (tastiera e lettori di schermo non ripartono dall'inizio) e la carta del
   // target appena registrato lampeggia.
+  // Anche i riquadri aperti (definizione, piano di crisi, piano della fase)
+  // restano aperti dopo il tocco.
   function disegna(appenaRegistrato) {
     var y = window.scrollY;
     var fuoco = U.chiaveFuoco(app);
+    var aperti = Array.prototype.map.call(app.querySelectorAll('details[open][data-chiave]'), function (d) { return d.getAttribute('data-chiave'); });
     var html = ({ oggi: schermoOggi, seduta: schermoSeduta, fine: schermoFine, riepilogo: schermoRiepilogo }[vista.schermo] || schermoOggi)();
     app.innerHTML = html;
     app.setAttribute('data-schermo', vista.schermo);
+    aperti.forEach(function (k) { var d = app.querySelector('details[data-chiave="' + k + '"]'); if (d) d.open = true; });
+    document.body.classList.toggle('con-barra', !!app.querySelector('.barra-comportamenti'));
+    document.body.classList.toggle('con-tasti', !!app.querySelector('.barra-tasti'));
+    centraIndice();
     window.scrollTo(0, y);
     U.rimettiFuoco(app, fuoco);
     if (appenaRegistrato) {
-      var carta = document.getElementById('s-' + appenaRegistrato);
-      if (carta) carta.classList.add('appena');
+      ['s-', 'b-'].forEach(function (p) {
+        var el = document.getElementById(p + appenaRegistrato);
+        if (el) el.classList.add('appena');
+      });
     }
     gestisciWakeLock();
+  }
+
+  // L'indice dei target scorre in orizzontale: il target scelto resta in vista.
+  function centraIndice() {
+    var strip = app.querySelector('.indice-strip'), sel = strip && strip.querySelector('.sel');
+    if (sel) strip.scrollLeft = sel.offsetLeft - strip.offsetLeft - (strip.clientWidth - sel.offsetWidth) / 2;
+  }
+
+  // Cambiando target, la carta riparte dall'alto (sotto la testata fissa).
+  function mostraFocus() {
+    var indice = app.querySelector('.indice'), testa = app.querySelector('.testa');
+    if (indice && indice.getBoundingClientRect().top < (testa ? testa.getBoundingClientRect().bottom : 0)) indice.scrollIntoView({ block: 'start' });
   }
 
   var firmaIntervalli = '', finitiPrima = 0;
@@ -898,7 +1133,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
         var sess = A.apriSessione(stato, sog());
         salva();
         bozzeABC = {};
-        vai('seduta', { sessioneId: sess.id });
+        vai('seduta', { sessioneId: sess.id, focus: null });
         break;
       }
       case 'riprendi': {
@@ -934,6 +1169,34 @@ BR.archivio.avvia().then(function (statoIniziale) {
         U.toast('Annullato l’ultimo dato di ' + t.nome);
         break;
       }
+      case 'annulla-ultimo': {
+        var u = ultimoDato(sessione());
+        if (!u) break;
+        A.annullaUltimo(stato, sessione(), u.target, [u.evento.tipo]);
+        if (A.online(stato)) A.sincronizza(stato);
+        salva();
+        disegna();
+        U.toast('Annullato: ' + u.target.nome + ', ' + u.testo);
+        break;
+      }
+      case 'vista':
+        U.preferenza('vista-seduta', b.getAttribute('data-valore'));
+        disegna();
+        break;
+      case 'focus':
+        vista.focus = id;
+        disegna();
+        mostraFocus();
+        break;
+      case 'focus-sposta': {
+        var elenco = targetVista(sog(), sessione()).indice;
+        var k2 = elenco.indexOf(vista.focus) + +b.getAttribute('data-verso');
+        // L'indice gira in tondo: le frecce non si disattivano mai (il fuoco resta lì).
+        vista.focus = elenco[(k2 + elenco.length) % elenco.length] || null;
+        disegna();
+        mostraFocus();
+        break;
+      }
       case 'annulla-conseguenza':
         A.annullaUltimo(stato, sessione(), t, ['conseguenza']);
         if (A.online(stato)) A.sincronizza(stato);
@@ -961,6 +1224,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
       case 'blocco-avanti': {
         var sa = sessione();
         var nuovo = Sd.passaA(sa, null, Date.now());
+        vista.focus = null;
         salva();
         vibra(30);
         U.toast(nuovo ? 'Adesso: ' + nuovo.nome : 'Scaletta completata');
@@ -972,6 +1236,7 @@ BR.archivio.avvia().then(function (statoIniziale) {
         var sb = sessione();
         var dest = Sd.passaA(sb, b.getAttribute('data-blocco'), Date.now());
         scalettaAperta = false;
+        vista.focus = null;
         salva();
         if (dest) U.toast('Adesso: ' + dest.nome);
         disegna();

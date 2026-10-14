@@ -23,6 +23,8 @@ Richiesta di Andrea (13 ottobre 2026): oltre a registrare i dati, organizzare la
 
 Senza scaletta tutto resta come prima: tutti i target insieme.
 
+**Vista "un target alla volta".** In seduta, sotto il setting, si sceglie la vista: *Elenco* (predefinita, come sopra) o *Un target alla volta*. Nella seconda il blocco in corso sta in tre righe; un indice in alto (con le frecce ‹ ›) sceglie il target da mostrare al centro, prima quelli del blocco e poi quelli di tutta la seduta; i comportamenti da ridurre misurati con un tocco (frequenza, tasso, durata) sono anche in una barra fissa in basso, sempre a portata di pollice. La barra mostra l’ultimo dato registrato, di qualunque target, con il suo *Annulla*. Un target nascosto che aspetta una risposta (intervallo da segnare, rinforzo del DRO o del DRL dovuto) ha un punto nell’indice e compare in *Da segnare*. Il piano della fase è una riga ("Piano: FCT · EXT") che si apre al tocco; i tasti delle conseguenze restano visibili. La scelta resta sul telefono. Le ragioni sono nella sezione 3.5 di `docs/design-esperienza-utente.md`.
+
 ## Tipi di blocco
 
 | Tipo | Dati raccolti | A cosa serve |
