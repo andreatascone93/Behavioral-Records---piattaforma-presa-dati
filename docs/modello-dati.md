@@ -45,7 +45,7 @@ Le frecce piene indicano "contiene"; quelle tratteggiate indicano un riferimento
 | Comportamento target | Ciò che si osserva | Nome, definizione operativa (cosa conta, cosa no, esempi), direzione desiderata (aumentare o ridurre) | Desktop |
 | Metodo di misura | Come si misura quel target | Tipo di misura, parametri (lunghezza intervallo, numero di prove, gerarchia dei prompt), criterio di padronanza | Desktop |
 | Strumento | Il controllo che compare sul telefono | Tipo (contatore, cronometro, timer a intervalli, griglia prove, scheda ABC), etichette e colori dei pulsanti | Desktop, derivato dal metodo |
-| Schedule di seduta | Il modello di una seduta | Elenco ordinato dei target con il loro strumento, durata prevista, setting | Desktop |
+| Schedule di seduta | Il modello di una seduta | Elenco ordinato dei target con il loro strumento, durata prevista, setting; scaletta in blocchi (probe, insegnamento, pause, probe ritardato) e target di tutta la seduta, vedi [organizzazione-seduta.md](organizzazione-seduta.md) | Desktop |
 | Sessione | Una seduta svolta | Data e ora, operatore, setting, fase in corso, durata reale, stato (aperta, chiusa, sincronizzata) | Telefono |
 | Evento | Un singolo dato registrato | Target, metodo, tipo di evento, istante, valore (es. livello di prompt), autore | Telefono |
 | Operatore | Chi usa la piattaforma | Nome, ruolo (supervisore, terapista, osservatore) | Desktop |

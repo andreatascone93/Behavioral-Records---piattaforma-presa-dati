@@ -421,6 +421,9 @@
           (conPrompt ? '<div class="campo"><label>Risposte che contano</label><select data-c-livello>' + LIVELLI_CRITERIO.map(function (l) {
             return '<option value="' + l[0] + '"' + (((c && c.livelloPrompt) || 'I') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
           }).join('') + '</select></div>' : '') +
+          (root.BR.seduta.discreto(t) ? '<div class="campo"><label>Prove che contano</label><select data-c-contesto>' + [['', 'Tutte'], ['probe', 'Solo probe'], ['insegnamento', 'Solo insegnamento']].map(function (l) {
+            return '<option value="' + l[0] + '"' + (((c && c.contesto) || '') === l[0] ? ' selected' : '') + '>' + l[1] + '</option>';
+          }).join('') + '</select></div>' : '') +
           '<div class="campo"><label>Operatori, almeno</label><input data-c-op type="number" min="1" max="6" value="' + ((c && c.minOperatori) || 1) + '"></div>' +
           '<div class="campo"><label>Setting, almeno</label><input data-c-set type="number" min="1" max="6" value="' + ((c && c.minSetting) || 1) + '"></div>' +
         '</div>' +
@@ -446,6 +449,8 @@
       if (livello && livello.value !== 'I') c.livelloPrompt = livello.value;
       var prima = el.querySelector('[data-c-prima]');
       if (prima && prima.checked) { c.primaProva = true; c.soglia = 100; c.verso = 'almeno'; }
+      var contesto = el.querySelector('[data-c-contesto]');
+      if (contesto && contesto.value) c.contesto = contesto.value;
       var op = Math.round(+el.querySelector('[data-c-op]').value || 1), set = Math.round(+el.querySelector('[data-c-set]').value || 1);
       if (op > 1) c.minOperatori = op;
       if (set > 1) c.minSetting = set;

@@ -308,3 +308,22 @@ body { font-size: 16px; }
 .seduta-setting { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0 0 0.6rem; }
 .fedelta-righe { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.2rem; font-size: 0.85rem; }
 .numero-medio.sotto { color: var(--attenzione); }
+
+/* Scaletta della seduta */
+.blocco-corrente { background: var(--superficie); border: 1px solid var(--linea); border-radius: 14px; padding: 12px; display: grid; gap: 8px; margin-bottom: 12px; box-shadow: var(--ombra); }
+.blocco-corrente.oltre { background: var(--attenzione-tenue); }
+.blocco-corrente.oltre .barra-tempo span { background: var(--attenzione); }
+.blocco-corrente.finito { grid-template-columns: 1fr auto; align-items: center; }
+.blocco-riga { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.blocco-nome { font-size: 1.15rem; }
+.blocco-tempo { font-size: 1rem; white-space: nowrap; }
+.blocco-nota { background: var(--superficie-2); border-radius: 8px; padding: 6px 8px; }
+.blocco-descr { margin: 0 0 10px; }
+.scaletta-elenco { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.scaletta-elenco li { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.scaletta-elenco li > div { display: grid; }
+.scaletta-elenco li.svolto { opacity: 0.7; }
+.scaletta-elenco li.ora { box-shadow: 0 0 0 2px var(--penna); }
+.probe-avviso { border-left: 4px solid var(--penna); }
+.probe-tasti { display: grid; gap: 8px; }
+.tasto-grande.tasto-errore { background: var(--superficie); border-color: var(--critico); color: var(--critico); }

@@ -282,3 +282,13 @@ textarea { min-height: 70px; resize: vertical; }
 .cloud-avanzate summary { cursor: pointer; color: var(--testo-2); font-size: 0.9rem; }
 .cloud-avanzate[open] { display: grid; gap: 0.6rem; }
 .errore-testo { color: var(--critico); font-weight: 700; font-size: 0.9rem; margin: 0; }
+
+/* Scaletta della seduta: un colore per contesto dei blocchi */
+.ctx-probe { background: var(--penna); color: var(--su-penna); }
+.ctx-insegnamento { background: var(--bene); color: var(--superficie); }
+.ctx-baseline { background: var(--testo-2); color: var(--superficie); }
+.ctx-nessuno { background: var(--superficie-2); color: var(--testo-2); }
+.ctx-bordo-probe { border-left: 4px solid var(--penna) !important; }
+.ctx-bordo-insegnamento { border-left: 4px solid var(--bene) !important; }
+.ctx-bordo-baseline { border-left: 4px solid var(--testo-2) !important; }
+.ctx-bordo-nessuno { border-left: 4px solid var(--linea) !important; }

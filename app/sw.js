@@ -7,7 +7,7 @@
  */
 'use strict';
 
-var VERSIONE = 'br-app-3';
+var VERSIONE = 'br-app-4';
 var FONT = 'br-font-1';
 var FILE = [
   './',
@@ -20,6 +20,7 @@ var FILE = [
   'css/desktop.css',
   'css/mobile.css',
   'js/modello.js',
+  'js/seduta.js',
   'js/piano.js',
   'js/fedelta.js',
   'js/repertorio.js',
@@ -36,6 +37,7 @@ var FILE = [
   'js/desktop-piano.js',
   'js/desktop-preferenze.js',
   'js/desktop-repertorio.js',
+  'js/desktop-seduta.js',
   'js/desktop.js',
   'js/mobile.js',
   'icone/icona.svg',
